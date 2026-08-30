@@ -90,32 +90,47 @@
 #define LED_IS_RGB     1
 #endif
 
-// ---- Buttons -------------------------------------------------
-#define USE_SELECT_BTN  1      // set to 0 if you don't wire a 2nd button
+// ---- Target Filter (Detection Mode) -------------------------------
+enum TargetFilter {
+  TARGET_CAM_ONLY = 0,   // Camera / surveillance devices only (heuristic score)
+  TARGET_ALL_DEV = 1     // Any RF device (WiFi APs, Stations, BLE beacons)
+};
 
-// ---- Buzzer + LED (you wire these) ---------------------------
+// ---- Sensitivity Modes (2-Button Controlled) --------------------
+enum SensitivityMode {
+  SENS_PINPOINT = 0,  // Ultra close-range sniffing (<0.5m, ~-48dBm threshold)
+  SENS_HIGH = 1,      // Close-range (~1.5m, ~-62dBm threshold)
+  SENS_MEDIUM = 2,    // Room-wide (~4.0m, ~-74dBm threshold)
+  SENS_LOW = 3,       // Perimeter / Far (~12.0m, ~-86dBm threshold)
+  SENS_COUNT = 4
+};
+
+#define SENS_PINPOINT_RSSI  -48
+#define SENS_HIGH_RSSI      -62
+#define SENS_MEDIUM_RSSI    -74
+#define SENS_LOW_RSSI       -86
+
+// ---- Buttons (2-Button Configuration) ----------------------------
+#define USE_SELECT_BTN  1      // 1 = 2-button control (Button 1: Mode/Left, Button 2: Select/Right)
+
+// ---- Buzzer + LED -----------------------------------------------
 #define BEEP_FREQ_HZ    3000
 #define BEEP_ON_MS      70
 
-// ---- Range dial / menu control ---------------------------------
-#define USE_RANGE_POT   1      // 1 = 10k pot on PIN_RANGE_POT, 0 = long-press cycles presets
-#define PIN_RANGE_POT   1      // ADC1-capable pin. Also drives the menu + calibration UI.
-#define RANGE_MIN_M     1.0f
-#define RANGE_MAX_M     30.0f
-
-// ---- RSSI <-> distance model (defaults; overwritten by Calibrate) --
+// ---- RSSI <-> distance model (defaults; calibrated via Wizard) ---
 #define TX_REF_RSSI_1M  -40    // typical RSSI at 1m for WiFi/BLE
 #define PATH_LOSS_N     2.5f   // 2=free space, 2.5-4=indoor w/ walls
 
 // ---- Timing ------------------------------------------------------
 #define DEBOUNCE_MS        35
-#define LONG_PRESS_MS      600
+#define LONG_PRESS_MS      550
 #define STALE_TIMEOUT_MS  25000UL
 #define WIFI_CHANNEL_DWELL_MS   320
 #define BLE_SCAN_DURATION_S     3
 #define BLE_SCAN_PERIOD_MS      4000UL
-#define SWEEP_PERIOD_MS         3500UL   // time for one full radar rotation
+#define SWEEP_PERIOD_MS         3200UL   // time for one full radar rotation
 #define CAL_SAMPLE_MS           2000UL   // RSSI averaging window during calibration
+
 
 // ---- Suspicion scoring -------------------------------------------
 #define SCORE_FLAG_THRESHOLD   50
@@ -129,3 +144,4 @@
 #define MAX_CANDIDATES 24
 #define MAX_TRUSTED    16
 #define RSSI_HIST_LEN  5
+

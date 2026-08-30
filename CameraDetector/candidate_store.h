@@ -179,9 +179,6 @@ inline void candidateStorePrune(uint32_t nowMs) {
   }
 }
 
-// Index of strongest ACTIVE candidate meeting a minimum score (-1 if none).
-// excludeTrusted=true skips devices on the trusted list (used for alerting);
-// leave false for "just show me the strongest signal nearby" fallbacks.
 inline int candidateStrongest(int16_t minScore, bool excludeTrusted = false) {
   int best = -1;
   for (int i = 0; i < MAX_CANDIDATES; i++) {
@@ -192,6 +189,17 @@ inline int candidateStrongest(int16_t minScore, bool excludeTrusted = false) {
   }
   return best;
 }
+
+inline int candidateStrongestFilter(TargetFilter filter, bool excludeTrusted = false) {
+  if (filter == TARGET_CAM_ONLY) {
+    int idx = candidateStrongest(SCORE_FLAG_THRESHOLD, excludeTrusted);
+    if (idx < 0) idx = candidateStrongest(0, excludeTrusted);
+    return idx;
+  } else {
+    return candidateStrongest(0, excludeTrusted);
+  }
+}
+
 
 inline int candidateCountActive() {
   int n = 0;
