@@ -26,15 +26,17 @@
 #include "buttons.h"
 #include "display_ui.h"
 
-enum AppState { ST_RADAR, ST_FINDER, ST_MENU, ST_CALIBRATE, ST_DEVICE_LIST, ST_GAME };
+enum AppState { ST_RADAR, ST_FINDER, ST_SURVEY, ST_MENU, ST_CALIBRATE, ST_DEVICE_LIST, ST_GAME };
 static AppState g_state = ST_RADAR;
 static AppState g_prevOperatingState = ST_RADAR;
 
 enum MenuItem {
   MI_MODE = 0,
+  MI_WIFI_SURVEY,
   MI_TARGET_FILTER,
   MI_SENSITIVITY,
   MI_VOLUME,
+  MI_BUZZER_TYPE,
   MI_GAME,
   MI_DEVICES,
   MI_TRUST_ALL,
@@ -57,6 +59,16 @@ static int      g_finderLastTargetIdx = -1;
 static uint32_t g_lastGeigerTickMs = 0;
 static uint32_t g_trustedFlashUntil = 0;
 static bool     g_trustedFlashWasTrust = true;
+
+// Wi-Fi Signal & Range Survey Mode state
+static int      g_surveyTargetIdx = -1;
+static int8_t   g_surveyPeakRssi = -100;
+static int8_t   g_surveyMinRssi = 0;
+#define SURVEY_HIST_LEN 16
+static int8_t   g_surveyHistory[SURVEY_HIST_LEN];
+static uint8_t  g_surveyHistCount = 0;
+static uint32_t g_surveyLastSampleMs = 0;
+static uint32_t g_surveyLastAudioMs = 0;
 
 // Minigame ("Spy Evader") State
 #define MAX_GAME_ENTITIES 4
@@ -97,6 +109,8 @@ static uint32_t  g_calNoSignalUntil = 0;
 
 static int g_btnMode = -1;
 static int g_btnSelect = -1;
+static int g_btnUp = -1;
+static int g_btnDown = -1;
 static int g_finderTargetIdx = -1;
 
 // Runtime calibration values (persisted via Preferences)
@@ -117,6 +131,8 @@ void loadSettings() {
   if ((int)g_sensMode >= SENS_COUNT) g_sensMode = SENS_MEDIUM;
   int vol = g_prefs.getInt("vol", (int)VOL_HIGH);
   alertSetVolume((VolumeLevel)vol);
+  int btype = g_prefs.getInt("buztype", (int)DEFAULT_BUZZER_TYPE);
+  alertSetBuzzerType((BuzzerType)btype);
   g_gameHighScore = g_prefs.getInt("highscore", 0);
   g_prefs.end();
 }
@@ -128,6 +144,7 @@ void persistSettings() {
   g_prefs.putInt("filter", (int)g_targetFilter);
   g_prefs.putInt("sens", (int)g_sensMode);
   g_prefs.putInt("vol", (int)alertGetVolume());
+  g_prefs.putInt("buztype", (int)alertGetBuzzerType());
   g_prefs.putInt("highscore", g_gameHighScore);
   g_prefs.end();
 }
@@ -145,6 +162,7 @@ void resetSettingsDefaults() {
   g_targetFilter = TARGET_CAM_ONLY;
   g_sensMode = SENS_MEDIUM;
   alertSetVolume(VOL_HIGH);
+  alertSetBuzzerType(DEFAULT_BUZZER_TYPE);
   persistSettings();
 }
 
@@ -167,6 +185,10 @@ void setup() {
   g_btnMode = buttonRegister(PIN_BTN_MODE);
 #if USE_SELECT_BTN
   g_btnSelect = buttonRegister(PIN_BTN_SELECT);
+#endif
+#if USE_4_BUTTONS
+  g_btnUp = buttonRegister(PIN_BTN_UP);
+  g_btnDown = buttonRegister(PIN_BTN_DOWN);
 #endif
 
   displaySplash();
@@ -210,23 +232,43 @@ void getMenuItem(int idx, char *titleBuf, size_t titleSz, char *valBuf, size_t v
   switch (idx) {
     case MI_MODE:
       snprintf(titleBuf, titleSz, "OPERATING MODE");
-      snprintf(valBuf, valSz, "%s", g_prevOperatingState == ST_RADAR ? "RADAR" : "FINDER");
+      if (g_prevOperatingState == ST_RADAR) snprintf(valBuf, valSz, "RADAR");
+      else if (g_prevOperatingState == ST_FINDER) snprintf(valBuf, valSz, "FINDER");
+      else snprintf(valBuf, valSz, "WIFI SURVEY");
+      break;
+    case MI_WIFI_SURVEY:
+      snprintf(titleBuf, titleSz, "WIFI SURVEY");
+      snprintf(valBuf, valSz, "RANGE & SIGNAL");
       break;
     case MI_TARGET_FILTER:
       snprintf(titleBuf, titleSz, "TARGET FILTER");
+#if OLED_W < 100
+      snprintf(valBuf, valSz, "%s", g_targetFilter == TARGET_ALL_DEV ? "ALL DEV" : "CAM ONLY");
+#else
       snprintf(valBuf, valSz, "%s", g_targetFilter == TARGET_ALL_DEV ? "ALL DEVICES" : "CAMERA ONLY");
+#endif
       break;
     case MI_SENSITIVITY: {
       snprintf(titleBuf, titleSz, "SENSITIVITY");
+#if OLED_W < 100
+      const char *s = (g_sensMode == SENS_PINPOINT) ? "PINPOINT" :
+                      (g_sensMode == SENS_HIGH) ? "HIGH 1.5m" :
+                      (g_sensMode == SENS_MEDIUM) ? "MED 4.0m" : "LOW 12m";
+#else
       const char *s = (g_sensMode == SENS_PINPOINT) ? "PINPOINT" :
                       (g_sensMode == SENS_HIGH) ? "HIGH (1.5m)" :
                       (g_sensMode == SENS_MEDIUM) ? "MED (4.0m)" : "LOW (12m)";
+#endif
       snprintf(valBuf, valSz, "%s", s);
       break;
     }
     case MI_VOLUME:
       snprintf(titleBuf, titleSz, "AUDIO VOLUME");
       snprintf(valBuf, valSz, "%s", alertVolumeLabel(alertGetVolume()));
+      break;
+    case MI_BUZZER_TYPE:
+      snprintf(titleBuf, titleSz, "BUZZER TYPE");
+      snprintf(valBuf, valSz, "%s", alertBuzzerTypeLabel(alertGetBuzzerType()));
       break;
     case MI_GAME:
       snprintf(titleBuf, titleSz, "SPY EVADER");
@@ -264,19 +306,49 @@ void getMenuItem(int idx, char *titleBuf, size_t titleSz, char *valBuf, size_t v
 }
 
 
-void handleCalibrationButtons(ButtonEvent ev, ButtonEvent ev2,
+void handleCalibrationButtons(ButtonEvent ev, ButtonEvent ev2, ButtonEvent ev3, ButtonEvent ev4,
                               const int *activeIdx, int activeCount) {
-  if (ev == BTN_LONG) { g_state = ST_MENU; return; }
-  if (g_calStep == CAL_SELECT1 && ev2 == BTN_SHORT && activeCount > 0) {
-    g_calSelectIdx = (g_calSelectIdx + 1) % activeCount;
+  // Button 1: Cancel / Back to Menu
+  if (ev == BTN_SHORT || ev == BTN_LONG) {
+    g_state = ST_MENU;
+    alertPlaySfx((const SfxNote[]){ {1600, 30} }, 1);
     return;
   }
-  if (g_calStep == CAL_SETDIST2 && ev2 == BTN_SHORT) {
-    g_calDist2 += 1.0f;
-    if (g_calDist2 > 8.0f) g_calDist2 = 2.0f;
-    return;
+
+  // Button 3 & 4: Navigation / Adjustment
+  if (g_calStep == CAL_SELECT1 && activeCount > 0) {
+    if (ev4 == BTN_SHORT) {
+      g_calSelectIdx = (g_calSelectIdx + 1) % activeCount;
+      alertPlaySfx((const SfxNote[]){ {2000, 15} }, 1);
+      return;
+    }
+    if (ev3 == BTN_SHORT) {
+      g_calSelectIdx = (g_calSelectIdx + activeCount - 1) % activeCount;
+      alertPlaySfx((const SfxNote[]){ {2200, 15} }, 1);
+      return;
+    }
   }
-  if (ev != BTN_SHORT) return;
+  if (g_calStep == CAL_SETDIST2) {
+    if (ev3 == BTN_SHORT) {
+      g_calDist2 += 1.0f;
+      if (g_calDist2 > 8.0f) g_calDist2 = 2.0f;
+      alertPlaySfx((const SfxNote[]){ {2400, 20} }, 1);
+      return;
+    }
+    if (ev4 == BTN_SHORT) {
+      g_calDist2 -= 1.0f;
+      if (g_calDist2 < 2.0f) g_calDist2 = 8.0f;
+      alertPlaySfx((const SfxNote[]){ {2000, 20} }, 1);
+      return;
+    }
+  }
+
+  // Button 2 (or Button 1 in 2-button mode): Confirm / Advance
+  bool confirm = (ev2 == BTN_SHORT);
+#if !USE_4_BUTTONS
+  if (!confirm && ev == BTN_SHORT) confirm = true;
+#endif
+  if (!confirm) return;
 
   switch (g_calStep) {
     case CAL_SELECT1: {
@@ -284,6 +356,7 @@ void handleCalibrationButtons(ButtonEvent ev, ButtonEvent ev2,
       if (g_calSelectIdx >= activeCount) g_calSelectIdx = activeCount - 1;
       memcpy(g_calTargetMac, g_candidates[activeIdx[g_calSelectIdx]].mac, 6);
       g_calStep = CAL_CONFIRM1;
+      alertPlaySfx((const SfxNote[]){ {2400, 25} }, 1);
       break;
     }
     case CAL_CONFIRM1: {
@@ -291,20 +364,24 @@ void handleCalibrationButtons(ButtonEvent ev, ButtonEvent ev2,
       if (idx < 0) { g_calNoSignalUntil = millis() + 1500; break; }
       g_calRssiSum = 0; g_calRssiCount = 0; g_calSampleStartMs = millis();
       g_calStep = CAL_SAMPLE1;
+      alertPlaySfx((const SfxNote[]){ {2600, 30} }, 1);
       break;
     }
     case CAL_RESULT1:
       g_calStep = CAL_SETDIST2;
+      alertPlaySfx((const SfxNote[]){ {2400, 25} }, 1);
       break;
     case CAL_SETDIST2:
       g_calRssiSum = 0; g_calRssiCount = 0; g_calSampleStartMs = millis();
       g_calStep = CAL_SAMPLE2;
+      alertPlaySfx((const SfxNote[]){ {2600, 30} }, 1);
       break;
     case CAL_RESULT2:
       g_txRef1m = g_calRssi1m;
       g_pathLossN = computeCalibratedN();
       persistSettings();
       Serial.printf("Saved calibration: ref=%ddBm N=%.2f\n", g_txRef1m, g_pathLossN);
+      alertPlaySfx((const SfxNote[]){ {2200, 40}, {2800, 60} }, 2);
       g_state = ST_MENU;
       break;
     default: break;
@@ -337,8 +414,13 @@ void drawCalibrateScreen(const int *activeIdx, int activeCount) {
       if (activeCount == 0) {
         drawTextScreen("CALIBRATE 1/2", "Turn on phone's", "2.4GHz hotspot", "...then select it");
       } else {
+#if USE_4_BUTTONS
+        drawDevicePickScreen("SELECT DEVICE", "B1 BACK  B2 USE",
+                              &g_candidates[activeIdx[g_calSelectIdx]], g_calSelectIdx, activeCount);
+#else
         drawDevicePickScreen("SELECT DEVICE", "B1 NEXT  B2 USE",
                               &g_candidates[activeIdx[g_calSelectIdx]], g_calSelectIdx, activeCount);
+#endif
       }
       break;
     case CAL_CONFIRM1: {
@@ -489,76 +571,139 @@ void gameTick() {
 // ------------------------------------------------------------
 
 void handleButtons(const int *activeIdx, int activeCount) {
-  ButtonEvent ev = buttonGetEvent(g_btnMode);
+  ButtonEvent ev  = buttonGetEvent(g_btnMode);
   ButtonEvent ev2 = BTN_NONE;
 #if USE_SELECT_BTN
-  ev2 = buttonGetEvent(g_btnSelect);
+  if (g_btnSelect >= 0) ev2 = buttonGetEvent(g_btnSelect);
+#endif
+  ButtonEvent ev3 = BTN_NONE;
+  ButtonEvent ev4 = BTN_NONE;
+#if USE_4_BUTTONS
+  if (g_btnUp >= 0) ev3 = buttonGetEvent(g_btnUp);
+  if (g_btnDown >= 0) ev4 = buttonGetEvent(g_btnDown);
 #endif
 
   if (g_state == ST_CALIBRATE) {
-    handleCalibrationButtons(ev, ev2, activeIdx, activeCount);
+    handleCalibrationButtons(ev, ev2, ev3, ev4, activeIdx, activeCount);
     return;
   }
 
   if (g_state == ST_GAME) {
-    if (ev == BTN_LONG) {
-      g_state = ST_MENU;
-    } else if (ev == BTN_SHORT) {
-      if (!g_gameStarted || g_gameFinished) {
+    if (!g_gameStarted || g_gameFinished) {
+      // Button 2 or Button 3: START / REPLAY
+      if (ev2 == BTN_SHORT || ev3 == BTN_SHORT) {
         gameStartRound();
-      } else {
-#if USE_SELECT_BTN
-        // In 2-button setup: Button 1 = Left
+        return;
+      }
+      // Button 1 or Button 4: EXIT to Menu
+      if (ev == BTN_SHORT || ev == BTN_LONG || ev4 == BTN_SHORT || ev4 == BTN_LONG) {
+        g_state = ST_MENU;
+        alertPlaySfx((const SfxNote[]){ {1800, 30} }, 1);
+        return;
+      }
+    } else {
+      // Gameplay:
+      // Button 1 or Button 3: Steer LEFT
+      if (ev == BTN_SHORT || ev3 == BTN_SHORT) {
         if (g_gameLane > 0) { g_gameLane--; alertSfxSteer(); }
-#else
-        // In 1-button setup: Cycle lanes 0 -> 1 -> 2 -> 1 -> 0
-        g_gameLane += g_gameLaneDir;
-        if (g_gameLane >= 2) { g_gameLane = 2; g_gameLaneDir = -1; }
-        else if (g_gameLane <= 0) { g_gameLane = 0; g_gameLaneDir = 1; }
-        alertSfxSteer();
-#endif
+        return;
       }
-    }
-#if USE_SELECT_BTN
-    if (ev2 == BTN_SHORT) {
-      if (!g_gameStarted || g_gameFinished) {
-        gameStartRound();
-      } else {
-        // Button 2 = Right
+      // Button 2 or Button 4: Steer RIGHT
+      if (ev2 == BTN_SHORT || ev4 == BTN_SHORT) {
         if (g_gameLane < 2) { g_gameLane++; alertSfxSteer(); }
+        return;
+      }
+      // Long press Button 1: Emergency exit
+      if (ev == BTN_LONG || ev4 == BTN_LONG) {
+        g_state = ST_MENU;
+        return;
       }
     }
-#endif
     return;
   }
 
   if (g_state == ST_DEVICE_LIST) {
     if (activeCount > 0 && g_deviceListIdx >= activeCount) g_deviceListIdx = activeCount - 1;
+
+#if USE_4_BUTTONS
+    // 4-Button: Button 1 is instant 1-click BACK to Menu
+    if (ev == BTN_SHORT || ev == BTN_LONG) {
+      g_state = ST_MENU;
+      alertPlaySfx((const SfxNote[]){ {1800, 25} }, 1);
+      return;
+    }
+#else
     if (ev == BTN_SHORT && activeCount > 0) {
       g_deviceListIdx = (g_deviceListIdx + 1) % activeCount;
+    } else if (ev == BTN_LONG) {
+      g_state = ST_MENU;
+      return;
+    }
+#endif
+
+    // Button 3 / 4: Scroll Up / Down
+    if (ev3 == BTN_SHORT && activeCount > 0) {
+      g_deviceListIdx = (g_deviceListIdx + activeCount - 1) % activeCount;
+      alertPlaySfx((const SfxNote[]){ {2200, 15} }, 1);
+    } else if (ev4 == BTN_SHORT && activeCount > 0) {
+      g_deviceListIdx = (g_deviceListIdx + 1) % activeCount;
+      alertPlaySfx((const SfxNote[]){ {1900, 15} }, 1);
     } else if (ev2 == BTN_SHORT || ev2 == BTN_LONG) {
+      // Button 2: Toggle Trust / Untrust
       if (activeCount > 0) {
         Candidate &c = g_candidates[activeIdx[g_deviceListIdx]];
         if (c.trusted) { trustedRemove(c.mac); c.trusted = false; }
         else { trustedAdd(c.mac); c.trusted = true; }
         candidateRecomputeScore(c);
+        alertPlaySfx((const SfxNote[]){ {2400, 30} }, 1);
       }
-    } else if (ev == BTN_LONG) {
-      g_state = ST_MENU;
     }
     return;
   }
 
   if (g_state == ST_MENU) {
+#if USE_4_BUTTONS
+    // In 4-button setup: Button 1 is instant 1-click BACK / EXIT!
+    if (ev == BTN_SHORT || ev == BTN_LONG) {
+      g_state = g_prevOperatingState;
+      alertPlaySfx((const SfxNote[]){ {1800, 30} }, 1);
+      return;
+    }
+#else
     if (ev == BTN_SHORT) {
       g_menuIndex = (g_menuIndex + 1) % MI_COUNT;
       alertPlaySfx((const SfxNote[]){ {2000, 15} }, 1);
+    } else if (ev == BTN_LONG) {
+      g_state = g_prevOperatingState;
+      alertPlaySfx((const SfxNote[]){ {1800, 30} }, 1);
+      return;
+    }
+#endif
+
+    // Button 3: Up, Button 4: Down
+    if (ev3 == BTN_SHORT) {
+      g_menuIndex = (g_menuIndex + MI_COUNT - 1) % MI_COUNT;
+      alertPlaySfx((const SfxNote[]){ {2200, 15} }, 1);
+    } else if (ev4 == BTN_SHORT) {
+      g_menuIndex = (g_menuIndex + 1) % MI_COUNT;
+      alertPlaySfx((const SfxNote[]){ {1900, 15} }, 1);
     } else if (ev2 == BTN_SHORT || ev2 == BTN_LONG) {
+      // Button 2: Select / Change
       switch (g_menuIndex) {
         case MI_MODE:
-          g_prevOperatingState = (g_prevOperatingState == ST_RADAR) ? ST_FINDER : ST_RADAR;
+          if (g_prevOperatingState == ST_RADAR) g_prevOperatingState = ST_FINDER;
+          else if (g_prevOperatingState == ST_FINDER) g_prevOperatingState = ST_SURVEY;
+          else g_prevOperatingState = ST_RADAR;
           g_state = g_prevOperatingState;
           alertPlaySfx((const SfxNote[]){ {2400, 30} }, 1);
+          break;
+        case MI_WIFI_SURVEY:
+          g_prevOperatingState = ST_SURVEY;
+          g_state = ST_SURVEY;
+          g_surveyPeakRssi = -100;
+          g_surveyMinRssi = 0;
+          g_surveyHistCount = 0;
+          alertPlaySfx((const SfxNote[]){ {2200, 30}, {2600, 40} }, 2);
           break;
         case MI_TARGET_FILTER:
           g_targetFilter = (g_targetFilter == TARGET_CAM_ONLY) ? TARGET_ALL_DEV : TARGET_CAM_ONLY;
@@ -576,6 +721,11 @@ void handleButtons(const int *activeIdx, int activeCount) {
           if (alertGetVolume() != VOL_MUTE) {
             alertPlaySfx((const SfxNote[]){ {2400, 35} }, 1);
           }
+          break;
+        case MI_BUZZER_TYPE:
+          alertCycleBuzzerType();
+          persistSettings();
+          alertPlaySfx((const SfxNote[]){ {2600, 40} }, 1);
           break;
         case MI_GAME:
           g_state = ST_GAME;
@@ -612,16 +762,196 @@ void handleButtons(const int *activeIdx, int activeCount) {
           alertPlaySfx((const SfxNote[]){ {1800, 30} }, 1);
           break;
       }
-    } else if (ev == BTN_LONG) {
-      g_state = g_prevOperatingState;
-      alertPlaySfx((const SfxNote[]){ {1800, 30} }, 1);
     }
     return;
   }
 
+  if (g_state == ST_SURVEY) {
+    int apList[MAX_CANDIDATES];
+    int apCount = candidateBuildWifiApList(apList, MAX_CANDIDATES);
+
+    if (ev == BTN_SHORT) {
+      // Button 1: Cycle to Radar
+      g_state = ST_RADAR;
+      g_prevOperatingState = ST_RADAR;
+      alertPlaySfx((const SfxNote[]){ {2400, 25} }, 1);
+      return;
+    } else if (ev == BTN_LONG) {
+      g_prevOperatingState = ST_SURVEY;
+      g_state = ST_MENU;
+      alertPlaySfx((const SfxNote[]){ {2000, 30} }, 1);
+      return;
+    }
+
+    if (ev2 == BTN_SHORT) {
+      // Button 2: Reset Peak/Min & clear sparkline history
+      g_surveyPeakRssi = -100;
+      g_surveyMinRssi = 0;
+      g_surveyHistCount = 0;
+      alertPlaySfx((const SfxNote[]){ {2600, 30}, {3000, 40} }, 2);
+      return;
+    } else if (ev2 == BTN_LONG) {
+      g_prevOperatingState = ST_SURVEY;
+      g_state = ST_MENU;
+      alertPlaySfx((const SfxNote[]){ {2000, 30} }, 1);
+      return;
+    }
+
+#if USE_4_BUTTONS
+    if (ev3 == BTN_SHORT && apCount > 0) {
+      // Button 3: Previous AP
+      int curPos = -1;
+      for (int i = 0; i < apCount; i++) {
+        if (apList[i] == g_surveyTargetIdx) { curPos = i; break; }
+      }
+      curPos = (curPos <= 0) ? (apCount - 1) : (curPos - 1);
+      g_surveyTargetIdx = apList[curPos];
+      g_surveyPeakRssi = g_candidates[g_surveyTargetIdx].rssi;
+      g_surveyMinRssi = g_candidates[g_surveyTargetIdx].rssi;
+      g_surveyHistCount = 0;
+      alertPlaySfx((const SfxNote[]){ {2400, 20} }, 1);
+      return;
+    }
+
+    if (ev4 == BTN_SHORT && apCount > 0) {
+      // Button 4: Next AP
+      int curPos = -1;
+      for (int i = 0; i < apCount; i++) {
+        if (apList[i] == g_surveyTargetIdx) { curPos = i; break; }
+      }
+      curPos = (curPos + 1) % apCount;
+      g_surveyTargetIdx = apList[curPos];
+      g_surveyPeakRssi = g_candidates[g_surveyTargetIdx].rssi;
+      g_surveyMinRssi = g_candidates[g_surveyTargetIdx].rssi;
+      g_surveyHistCount = 0;
+      alertPlaySfx((const SfxNote[]){ {2000, 20} }, 1);
+      return;
+    }
+#endif
+    return;
+  }
+
   // ST_RADAR or ST_FINDER
+#if USE_4_BUTTONS
+  // ---- 4-Button Controls ----
   if (ev == BTN_SHORT) {
-    g_state = (g_state == ST_RADAR) ? ST_FINDER : ST_RADAR;
+    // Button 1: Toggle RADAR -> FINDER -> SURVEY -> RADAR
+    if (g_state == ST_RADAR) {
+      g_state = ST_FINDER;
+    } else if (g_state == ST_FINDER) {
+      g_state = ST_SURVEY;
+      g_surveyPeakRssi = -100;
+      g_surveyMinRssi = 0;
+      g_surveyHistCount = 0;
+    } else {
+      g_state = ST_RADAR;
+    }
+    g_finderTargetIdx = -1;
+    g_finderPeakRssi = -100;
+    alertPlaySfx((const SfxNote[]){ {2400, 25} }, 1);
+  } else if (ev == BTN_LONG) {
+    // Button 1 Long: Enter Menu
+    g_prevOperatingState = g_state;
+    g_state = ST_MENU;
+    alertPlaySfx((const SfxNote[]){ {2000, 30} }, 1);
+  }
+
+  if (ev2 == BTN_SHORT) {
+    if (g_state == ST_FINDER) {
+      // In Finder: Button 2 Short = 1-click TRUST / UNTRUST toggle!
+      int idx = (g_finderTargetIdx >= 0 && g_candidates[g_finderTargetIdx].active)
+                  ? g_finderTargetIdx : candidateStrongestFilter(g_targetFilter, false);
+      if (idx >= 0) {
+        if (g_candidates[idx].trusted) {
+          trustedRemove(g_candidates[idx].mac);
+          g_candidates[idx].trusted = false;
+          candidateRecomputeScore(g_candidates[idx]);
+          g_trustedFlashWasTrust = false;
+          g_trustedFlashUntil = millis() + 1200;
+          alertPlaySfx((const SfxNote[]){ {1600, 40}, {1200, 50} }, 2);
+        } else {
+          trustedAdd(g_candidates[idx].mac);
+          g_candidates[idx].trusted = true;
+          candidateRecomputeScore(g_candidates[idx]);
+          g_trustedFlashWasTrust = true;
+          g_trustedFlashUntil = millis() + 1200;
+          alertPlaySfx((const SfxNote[]){ {2200, 40}, {2800, 60} }, 2);
+        }
+      }
+    } else {
+      // In Radar: Button 2 Short = 1-click OPEN MENU!
+      g_prevOperatingState = g_state;
+      g_state = ST_MENU;
+      alertPlaySfx((const SfxNote[]){ {2000, 30} }, 1);
+    }
+  } else if (ev2 == BTN_LONG) {
+    if (g_state == ST_FINDER) {
+      // In Finder: Button 2 Long = Enter Menu
+      g_prevOperatingState = g_state;
+      g_state = ST_MENU;
+      alertPlaySfx((const SfxNote[]){ {2000, 30} }, 1);
+    } else {
+      // In Radar: Button 2 Long = Toggle Mute
+      alertToggleMute();
+    }
+  }
+
+  if (ev3 == BTN_SHORT) {
+    if (g_state == ST_FINDER) {
+      // Finder: Target PREVIOUS
+      int start = (g_finderTargetIdx < 0) ? 0 : g_finderTargetIdx;
+      int idx = start;
+      for (int tries = 0; tries < MAX_CANDIDATES; tries++) {
+        idx = (idx + MAX_CANDIDATES - 1) % MAX_CANDIDATES;
+        if (g_candidates[idx].active) {
+          g_finderTargetIdx = idx;
+          g_finderPeakRssi = g_candidates[idx].rssi;
+          alertPlaySfx((const SfxNote[]){ {2400, 20} }, 1);
+          break;
+        }
+      }
+    } else {
+      // Radar: Sensitivity UP (closer range)
+      g_sensMode = (SensitivityMode)((int)g_sensMode > 0 ? (int)g_sensMode - 1 : (SENS_COUNT - 1));
+      persistSettings();
+      alertPlaySfx((const SfxNote[]){ {2800, 25} }, 1);
+    }
+  }
+
+  if (ev4 == BTN_SHORT) {
+    if (g_state == ST_FINDER) {
+      // Finder: Target NEXT
+      int start = (g_finderTargetIdx < 0) ? -1 : g_finderTargetIdx;
+      int idx = start;
+      for (int tries = 0; tries < MAX_CANDIDATES; tries++) {
+        idx = (idx + 1) % MAX_CANDIDATES;
+        if (g_candidates[idx].active) {
+          g_finderTargetIdx = idx;
+          g_finderPeakRssi = g_candidates[idx].rssi;
+          alertPlaySfx((const SfxNote[]){ {2000, 20} }, 1);
+          break;
+        }
+      }
+    } else {
+      // Radar: Sensitivity DOWN (wider range)
+      g_sensMode = (SensitivityMode)(((int)g_sensMode + 1) % SENS_COUNT);
+      persistSettings();
+      alertPlaySfx((const SfxNote[]){ {2200, 25} }, 1);
+    }
+  }
+#else
+  // ---- 2-Button / 1-Button Fallback ----
+  if (ev == BTN_SHORT) {
+    if (g_state == ST_RADAR) {
+      g_state = ST_FINDER;
+    } else if (g_state == ST_FINDER) {
+      g_state = ST_SURVEY;
+      g_surveyPeakRssi = -100;
+      g_surveyMinRssi = 0;
+      g_surveyHistCount = 0;
+    } else {
+      g_state = ST_RADAR;
+    }
     g_finderTargetIdx = -1;
     g_finderPeakRssi = -100;
     alertPlaySfx((const SfxNote[]){ {2400, 25} }, 1);
@@ -631,10 +961,8 @@ void handleButtons(const int *activeIdx, int activeCount) {
     alertPlaySfx((const SfxNote[]){ {2000, 30} }, 1);
   }
 
-#if USE_SELECT_BTN
   if (ev2 == BTN_SHORT) {
     if (g_state == ST_FINDER) {
-      // Cycle target candidate
       int start = (g_finderTargetIdx < 0) ? -1 : g_finderTargetIdx;
       int idx = start;
       for (int tries = 0; tries < MAX_CANDIDATES; tries++) {
@@ -647,7 +975,6 @@ void handleButtons(const int *activeIdx, int activeCount) {
         }
       }
     } else {
-      // In Radar: Button 2 short cycles Sensitivity mode directly (Pinpoint -> High -> Med -> Low)
       g_sensMode = (SensitivityMode)(((int)g_sensMode + 1) % SENS_COUNT);
       persistSettings();
       alertPlaySfx((const SfxNote[]){ {2600, 30} }, 1);
@@ -658,7 +985,6 @@ void handleButtons(const int *activeIdx, int activeCount) {
                   ? g_finderTargetIdx : candidateStrongestFilter(g_targetFilter, false);
       if (idx >= 0) {
         if (g_candidates[idx].trusted) {
-          // Untrust target
           trustedRemove(g_candidates[idx].mac);
           g_candidates[idx].trusted = false;
           candidateRecomputeScore(g_candidates[idx]);
@@ -666,7 +992,6 @@ void handleButtons(const int *activeIdx, int activeCount) {
           g_trustedFlashUntil = millis() + 1200;
           alertPlaySfx((const SfxNote[]){ {1600, 40}, {1200, 50} }, 2);
         } else {
-          // Trust target
           trustedAdd(g_candidates[idx].mac);
           g_candidates[idx].trusted = true;
           candidateRecomputeScore(g_candidates[idx]);
@@ -676,7 +1001,6 @@ void handleButtons(const int *activeIdx, int activeCount) {
         }
       }
     } else {
-      // In Radar: Button 2 long toggles Mute
       alertToggleMute();
     }
   }
@@ -761,6 +1085,59 @@ void loop() {
       break;
     }
 
+    case ST_SURVEY: {
+      alertSetPattern(ALERT_OFF);
+      int apList[MAX_CANDIDATES];
+      int apCount = candidateBuildWifiApList(apList, MAX_CANDIDATES);
+
+      if (g_surveyTargetIdx < 0 || !g_candidates[g_surveyTargetIdx].active) {
+        g_surveyTargetIdx = candidateStrongestWifiAp();
+      }
+
+      int curApIdx = -1;
+      Candidate *c = nullptr;
+      if (g_surveyTargetIdx >= 0 && g_candidates[g_surveyTargetIdx].active) {
+        c = &g_candidates[g_surveyTargetIdx];
+        if (c->channel > 0) {
+          finderLocked = true;
+          finderChannel = c->channel;
+        }
+        for (int i = 0; i < apCount; i++) {
+          if (apList[i] == g_surveyTargetIdx) { curApIdx = i; break; }
+        }
+      }
+
+      uint32_t now = millis();
+      if (c != nullptr) {
+        // Record rolling history sample every 120ms
+        if (now - g_surveyLastSampleMs >= 120) {
+          g_surveyLastSampleMs = now;
+          if (g_surveyPeakRssi == -100 || c->rssi > g_surveyPeakRssi) g_surveyPeakRssi = c->rssi;
+          if (g_surveyMinRssi == 0 || c->rssi < g_surveyMinRssi) g_surveyMinRssi = c->rssi;
+
+          if (g_surveyHistCount < SURVEY_HIST_LEN) {
+            g_surveyHistory[g_surveyHistCount++] = c->rssi;
+          } else {
+            memmove(g_surveyHistory, g_surveyHistory + 1, SURVEY_HIST_LEN - 1);
+            g_surveyHistory[SURVEY_HIST_LEN - 1] = c->rssi;
+          }
+        }
+
+        // Acoustic Survey Chirp / Geiger clicks
+        // Interval speeds up as signal gets stronger (-90 -> 600ms, -35 -> 45ms)
+        uint32_t audioInterval = (uint32_t)map(constrain(c->rssi, -90, -35), -90, -35, 600, 45);
+        if (now - g_surveyLastAudioMs >= audioInterval) {
+          g_surveyLastAudioMs = now;
+          int pingFreq = map(constrain(c->rssi, -90, -35), -90, -35, 900, 2800);
+          alertFirePing(pingFreq, 180);
+        }
+      }
+
+      drawSurveyScreen(c, curApIdx, apCount, g_surveyPeakRssi, g_surveyMinRssi,
+                       g_surveyHistory, g_surveyHistCount, alertIsMuted());
+      break;
+    }
+
     case ST_MENU: {
       alertSetPattern(ALERT_OFF);
       char titleBuf[24];
@@ -776,8 +1153,13 @@ void loop() {
         drawTextScreen("KNOWN DEVICES", "no devices", "detected yet", "hold=back");
       } else {
         const Candidate &c = g_candidates[s_activeIdx[g_deviceListIdx]];
+#if USE_4_BUTTONS
+        drawDevicePickScreen("KNOWN DEVICES", c.trusted ? "B1 BACK  B2 UNTRUST" : "B1 BACK  B2 TRUST",
+                              &c, g_deviceListIdx, s_activeCount);
+#else
         drawDevicePickScreen("KNOWN DEVICES", c.trusted ? "B2 UNTRUST  B1 NEXT" : "B2 TRUST  B1 NEXT",
                               &c, g_deviceListIdx, s_activeCount);
+#endif
       }
       break;
     }

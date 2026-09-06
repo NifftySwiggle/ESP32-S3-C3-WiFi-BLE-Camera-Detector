@@ -14,11 +14,12 @@ struct ButtonState {
   ButtonEvent pending;
 };
 
-#define MAX_BUTTONS 2
+#define MAX_BUTTONS 4
 static ButtonState g_buttons[MAX_BUTTONS];
 static int g_numButtons = 0;
 
 inline int buttonRegister(uint8_t pin) {
+  if (g_numButtons >= MAX_BUTTONS) return -1;
   pinMode(pin, INPUT_PULLUP);
   ButtonState &b = g_buttons[g_numButtons];
   b.pin = pin; b.rawLast = true; b.stablePressed = false;

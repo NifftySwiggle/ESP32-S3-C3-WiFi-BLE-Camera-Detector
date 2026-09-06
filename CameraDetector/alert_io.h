@@ -22,12 +22,16 @@ enum VolumeLevel {
 };
 
 static VolumeLevel g_volume = VOL_HIGH;
+static BuzzerType  g_buzzerType = DEFAULT_BUZZER_TYPE;
 
 inline void alertWriteLed(uint8_t brightness) {
 #if LED_IS_RGB
   rgbLedWrite(PIN_LED, brightness, brightness, brightness);
 #else
   analogWrite(PIN_LED, brightness);
+#endif
+#if defined(PIN_LED2) && (PIN_LED2 >= 0)
+  analogWrite(PIN_LED2, brightness);
 #endif
 }
 
@@ -37,7 +41,35 @@ inline void alertInit() {
 #if !LED_IS_RGB
   digitalWrite(PIN_LED, LOW);
 #endif
+#if defined(PIN_LED2) && (PIN_LED2 >= 0)
+  pinMode(PIN_LED2, OUTPUT);
+  digitalWrite(PIN_LED2, LOW);
+#endif
+  pinMode(PIN_BUZZER, OUTPUT);
+  digitalWrite(PIN_BUZZER, LOW);
   noTone(PIN_BUZZER);
+}
+
+inline void alertSetBuzzerType(BuzzerType t) {
+  g_buzzerType = t;
+  noTone(PIN_BUZZER);
+  pinMode(PIN_BUZZER, OUTPUT);
+  digitalWrite(PIN_BUZZER, LOW);
+}
+
+inline BuzzerType alertGetBuzzerType() {
+  return g_buzzerType;
+}
+
+inline void alertCycleBuzzerType() {
+  g_buzzerType = (BuzzerType)(((int)g_buzzerType + 1) % BUZZER_TYPE_COUNT);
+  noTone(PIN_BUZZER);
+  pinMode(PIN_BUZZER, OUTPUT);
+  digitalWrite(PIN_BUZZER, LOW);
+}
+
+inline const char* alertBuzzerTypeLabel(BuzzerType t) {
+  return (t == BUZZER_ACTIVE) ? "ACTIVE (DC)" : "PASSIVE (PWM)";
 }
 
 inline void alertSetPattern(AlertPattern p, uint32_t intervalMs = 500) {
@@ -182,20 +214,37 @@ inline void alertTick() {
 #if !LED_IS_RGB
     digitalWrite(PIN_LED, LOW);
 #endif
+#if defined(PIN_LED2) && (PIN_LED2 >= 0)
+    digitalWrite(PIN_LED2, LOW);
+#endif
   }
 
   if (wantOn && g_volume != VOL_MUTE && !g_muted) {
-    if (g_volume == VOL_HIGH) {
-      tone(PIN_BUZZER, freqToPlay);
-    } else if (g_volume == VOL_MED) {
-      if ((now % 4) < 3) tone(PIN_BUZZER, freqToPlay);
-      else noTone(PIN_BUZZER);
-    } else if (g_volume == VOL_LOW) {
-      if ((now % 4) == 0) tone(PIN_BUZZER, freqToPlay);
-      else noTone(PIN_BUZZER);
+    if (g_buzzerType == BUZZER_ACTIVE) {
+      if (g_volume == VOL_HIGH) {
+        digitalWrite(PIN_BUZZER, HIGH);
+      } else if (g_volume == VOL_MED) {
+        digitalWrite(PIN_BUZZER, (now % 4) < 3 ? HIGH : LOW);
+      } else if (g_volume == VOL_LOW) {
+        digitalWrite(PIN_BUZZER, (now % 4) == 0 ? HIGH : LOW);
+      }
+    } else {
+      if (g_volume == VOL_HIGH) {
+        tone(PIN_BUZZER, freqToPlay);
+      } else if (g_volume == VOL_MED) {
+        if ((now % 4) < 3) tone(PIN_BUZZER, freqToPlay);
+        else noTone(PIN_BUZZER);
+      } else if (g_volume == VOL_LOW) {
+        if ((now % 4) == 0) tone(PIN_BUZZER, freqToPlay);
+        else noTone(PIN_BUZZER);
+      }
     }
   } else {
-    noTone(PIN_BUZZER);
+    if (g_buzzerType == BUZZER_ACTIVE) {
+      digitalWrite(PIN_BUZZER, LOW);
+    } else {
+      noTone(PIN_BUZZER);
+    }
   }
 }
 

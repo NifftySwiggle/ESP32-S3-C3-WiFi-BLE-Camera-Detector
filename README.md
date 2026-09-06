@@ -86,6 +86,31 @@ Designed from the ground up for streamlined **2-Button Operation**, it eliminate
 
 The firmware automatically configures pin mappings and display geometry based on the selected Arduino board target (`CONFIG_IDF_TARGET_ESP32C3` vs `CONFIG_IDF_TARGET_ESP32S3`).
 
+### ESP32-C3 (0.42" 72x40 OLED or Optional External OLED)
+
+The pin assignments are chosen to utilize the safest GPIO pins with built-in internal pull-ups, keeping I2C (`GPIO5`/`GPIO6`), Native USB (`GPIO18`/`GPIO19`), and Hardware Serial UART (`GPIO20`/`GPIO21`) completely free for future expansions (e.g. SPI screens, SD cards, serial GPS):
+
+| Component | ESP32-C3 Pin | Notes |
+| :--- | :--- | :--- |
+| **OLED SDA** | `GPIO5` | I2C Data (Wire) |
+| **OLED SCL** | `GPIO6` | I2C Clock (Wire) |
+| **Buzzer (+)** | `GPIO10` | Supports **Active (DC)** or **Passive (PWM)** buzzers! (-) connects to GND |
+| **Onboard LED** | `GPIO8` | Onboard blue LED on ESP32-C3 SuperMini |
+| **Extra External LED** | `GPIO1` | Extra status LED (flashes in sync with alerts/pings) |
+| **Button 1 (Mode / Left / Back)** | `GPIO0` | Connect to GND (Internal Pullup enabled) |
+| **Button 2 (Select / Right / Action)** | `GPIO2` | Connect to GND (Internal Pullup enabled) |
+| **Button 3 (Up / Prev / Sens+)** | `GPIO3` | Connect to GND (Internal Pullup enabled) |
+| **Button 4 (Down / Next / Sens-)** | `GPIO4` | Connect to GND (Internal Pullup enabled) |
+
+> [!NOTE]
+> **Optional External OLED on C3**:
+> - **Default (`C3_OPTIONAL_OLED 0`)**: If an optional OLED is **not added**, it automatically uses the original onboard **0.42" 72x40** OLED screen!
+> - **Optional External OLED**: If you attach an external I2C OLED to `GPIO5` (SDA) and `GPIO6` (SCL), simply set `C3_OPTIONAL_OLED` in [`config.h`](file:///c:/Users/Nifft/Documents/C3ESP/cameradetectorv2/CameraDetector/config.h):
+>   - `1` = Optional 0.96" 128x64 I2C OLED (SSD1306)
+>   - `2` = Optional 0.91" 128x32 I2C OLED (SSD1306)
+
+---
+
 ### ESP32-S3 (0.91" 128x32 OLED)
 
 | Component | ESP32-S3 Pin | Notes |
@@ -94,34 +119,48 @@ The firmware automatically configures pin mappings and display geometry based on
 | **OLED GND** | `GND` | Ground |
 | **OLED SDA** | `GPIO41` | I2C Data (Wire) |
 | **OLED SCL** | `GPIO42` | I2C Clock (Wire) |
-| **Passive Buzzer (+)** | `GPIO21` | Buzzer (-) connects to GND |
+| **Buzzer (+)** | `GPIO21` | Active or Passive buzzer. (-) connects to GND |
 | **Status LED** | `GPIO48` | Onboard RGB LED (or external LED) |
-| **Button 1 (Mode / Left)** | `GPIO16` | Connect to GND (Internal Pullup) |
-| **Button 2 (Select / Right)** | `GPIO47` | Connect to GND (Internal Pullup) |
-
-### ESP32-C3 (0.42" 72x40 OLED)
-
-| Component | ESP32-C3 Pin | Notes |
-| :--- | :--- | :--- |
-| **OLED Display** | *Onboard* | Integrated 0.42" I2C OLED |
-| **Passive Buzzer (+)** | `GPIO10` | Buzzer (-) connects to GND |
-| **Status LED (Anode)** | `GPIO3` | Connect through 220–330Ω resistor to GND |
-| **Button 1 (Mode / Left)** | `GPIO9` | Connect to GND (Internal Pullup) |
-| **Button 2 (Select / Right)** | `GPIO0` | Connect to GND (Internal Pullup) |
-
-> [!NOTE]
-> All buttons utilize the ESP32's internal pull-up resistors (`INPUT_PULLUP`). Simply wire one side of each momentary button to the respective GPIO pin and the other side to `GND`. No external resistors required.
+| **Button 1 (Mode / Left)** | `GPIO5` | Connect to GND (Internal Pullup) |
+| **Button 2 (Select / Right)** | `GPIO6` | Connect to GND (Internal Pullup) |
+| **Button 3 (Up / Prev)** | `GPIO16` | Connect to GND (Internal Pullup) |
+| **Button 4 (Down / Next)** | `GPIO47` | Connect to GND (Internal Pullup) |
 
 ---
 
-## 🎮 2-Button Control Reference
+### 🔊 Active & Passive Buzzer Support
 
-| Input Action | Radar Scope | Finder Tracker | System Menu | Spy Evader Game | Calibration Wizard |
-| :--- | :--- | :--- | :--- | :--- | :--- |
-| **Button 1 (Short Press)** | Switch to Finder | Switch to Radar | Scroll to Next Item | Move Left / Start | Advance to Next Step |
-| **Button 1 (Long Press)** | Open System Menu | Open System Menu | Exit Menu to Radar | Exit to Menu | Cancel / Abort |
-| **Button 2 (Short Press)** | Cycle Sensitivity Mode (`PIN`→`HI`→`MED`→`LOW`) | Cycle Target Device | Change Value / Toggle | Move Right / Start | Select Device / Adjust Distance |
-| **Button 2 (Long Press)** | Toggle Audio Mute | Toggle **TRUST / UNTRUST** | Change Value / Toggle | *Unused* | *Unused* |
+The firmware natively supports **both** styles of buzzers without soldering changes:
+1. **Passive Buzzer (PWM)**: Uses frequency pitch modulation via `tone()` to generate distinct multi-tone melodies, coin chimes, crash tones, and Geiger clicks.
+2. **Active Buzzer (DC)**: Uses clean digital `HIGH`/`LOW` gating to drive buzzers with built-in internal oscillators without distorted scratchy sounds.
+
+> [!NOTE]
+> All buttons utilize the ESP32's internal pull-up resistors (`INPUT_PULLUP`). Simply wire one side of each momentary button to the respective GPIO pin and the other side to `GND`. No external resistors required.
+> You can toggle the buzzer type directly from the OLED screen in the **System Menu** under **`BUZZER TYPE`** (`[ PASSIVE (PWM) ]` / `[ ACTIVE (DC) ]`). The choice is instantly saved to ESP32 Flash memory!
+
+---
+
+## 🎮 Control Reference
+
+### 🚀 4-Button Mode (`USE_4_BUTTONS 1` - Default)
+With 4 dedicated buttons, everything is fast and 1-click (no long-presses needed):
+
+| Input Action | Radar Scope | Finder Tracker | System Menu | Spy Evader Game |
+| :--- | :--- | :--- | :--- | :--- |
+| **Button 1 (`PIN_BTN_MODE`)** | Switch to Finder | Switch to Radar | **Instant Exit / Back** | Steer Left / Exit (from menu/over) |
+| **Button 2 (`PIN_BTN_SELECT`)** | **1-Click Open Menu** | **1-Click Trust / Untrust** | **Select / Change Value** | Steer Right / Start / Replay |
+| **Button 3 (`PIN_BTN_UP`)** | Sensitivity UP (`LOW`→`PIN`) | **Previous Target** | **Scroll Menu Up** | Steer Left / Start Round |
+| **Button 4 (`PIN_BTN_DOWN`)** | Sensitivity DOWN (`PIN`→`LOW`) | **Next Target** | **Scroll Menu Down** | Steer Right / Exit Game |
+
+### 🕹️ 2-Button Fallback (`USE_4_BUTTONS 0`)
+If only 2 buttons are wired:
+
+| Input Action | Radar Scope | Finder Tracker | System Menu | Spy Evader Game |
+| :--- | :--- | :--- | :--- | :--- |
+| **Button 1 (Short)** | Switch to Finder | Switch to Radar | Scroll to Next Item | Steer Left / Start |
+| **Button 1 (Long)** | Open System Menu | Open System Menu | Exit to Radar / Finder | Exit to Menu |
+| **Button 2 (Short)** | Cycle Sensitivity | Cycle Target Device | Select / Change Value | Steer Right / Start |
+| **Button 2 (Long)** | Toggle Audio Mute | Toggle Trust / Untrust | Select / Change Value | *Unused* |
 
 ---
 

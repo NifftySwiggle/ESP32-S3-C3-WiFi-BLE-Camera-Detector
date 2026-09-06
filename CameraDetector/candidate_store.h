@@ -222,6 +222,43 @@ inline bool channelHasActiveCandidate(uint8_t ch) {
   return false;
 }
 
+inline int candidateStrongestWifiAp() {
+  int best = -1;
+  for (int i = 0; i < MAX_CANDIDATES; i++) {
+    if (!g_candidates[i].active) continue;
+    if (g_candidates[i].source != SRC_WIFI_AP) continue;
+    if (best < 0 || g_candidates[i].rssi > g_candidates[best].rssi) best = i;
+  }
+  // Fallback to any active WiFi candidate if no AP beacon captured yet
+  if (best < 0) {
+    for (int i = 0; i < MAX_CANDIDATES; i++) {
+      if (!g_candidates[i].active) continue;
+      if (g_candidates[i].source != SRC_BLE) {
+        if (best < 0 || g_candidates[i].rssi > g_candidates[best].rssi) best = i;
+      }
+    }
+  }
+  return best;
+}
+
+inline int candidateBuildWifiApList(int *indices, int capacity) {
+  int count = 0;
+  for (int i = 0; i < MAX_CANDIDATES && count < capacity; i++) {
+    if (g_candidates[i].active && g_candidates[i].source == SRC_WIFI_AP) {
+      indices[count++] = i;
+    }
+  }
+  // If no beacons with AP flag, include other non-BLE WiFi devices
+  if (count == 0) {
+    for (int i = 0; i < MAX_CANDIDATES && count < capacity; i++) {
+      if (g_candidates[i].active && g_candidates[i].source != SRC_BLE) {
+        indices[count++] = i;
+      }
+    }
+  }
+  return count;
+}
+
 // Marks every currently-active device as trusted (a "baseline snapshot").
 inline void trustedSnapshotAll() {
   for (int i = 0; i < MAX_CANDIDATES; i++) {

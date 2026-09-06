@@ -36,23 +36,35 @@ inline void displaySplash() {
   u8g2.clearBuffer();
   // Sci-fi tech border frame
   u8g2.drawFrame(OX(0), OY(0), OLED_W, OLED_H);
-  u8g2.drawBox(OX(0), OY(0), 4, 2);
-  u8g2.drawBox(OX(0), OY(0), 2, 4);
-  u8g2.drawBox(OX(OLED_W - 4), OY(OLED_H - 2), 4, 2);
-  u8g2.drawBox(OX(OLED_W - 2), OY(OLED_H - 4), 2, 4);
+  u8g2.drawBox(OX(0), OY(0), 3, 2);
+  u8g2.drawBox(OX(0), OY(0), 2, 3);
+  u8g2.drawBox(OX(OLED_W - 3), OY(OLED_H - 2), 3, 2);
+  u8g2.drawBox(OX(OLED_W - 2), OY(OLED_H - 3), 2, 3);
 
-  u8g2.setFont(u8g2_font_5x8_tr);
-  const char *t1 = "CYBER-DETECT";
-  const char *t2 = "RF-SWEEPER v4";
-  int w1 = u8g2.getStrWidth(t1);
-  int w2 = u8g2.getStrWidth(t2);
-  u8g2.drawStr(OX((OLED_W - w1) / 2), OY(13), t1);
-  u8g2.setFont(u8g2_font_4x6_tr);
-  u8g2.drawStr(OX((OLED_W - w2) / 2), OY(22), t2);
+  if (OLED_W < 100) {
+    u8g2.setFont(u8g2_font_4x6_tr);
+    const char *t1 = "CYBER-DETECT";
+    const char *t2 = "RF-SWEEPER v4";
+    int w1 = u8g2.getStrWidth(t1);
+    int w2 = u8g2.getStrWidth(t2);
+    u8g2.drawStr(OX((OLED_W - w1) / 2), OY(13), t1);
+    u8g2.drawStr(OX((OLED_W - w2) / 2), OY(22), t2);
 
-  // Animated futuristic scanline bar
-  u8g2.drawHLine(OX(6), OY(OLED_H - 5), OLED_W - 12);
-  u8g2.drawBox(OX(6), OY(OLED_H - 6), OLED_W - 12, 3);
+    u8g2.drawHLine(OX(6), OY(OLED_H - 6), OLED_W - 12);
+    u8g2.drawBox(OX(6), OY(OLED_H - 7), OLED_W - 12, 3);
+  } else {
+    u8g2.setFont(u8g2_font_5x8_tr);
+    const char *t1 = "CYBER-DETECT";
+    const char *t2 = "RF-SWEEPER v4";
+    int w1 = u8g2.getStrWidth(t1);
+    int w2 = u8g2.getStrWidth(t2);
+    u8g2.drawStr(OX((OLED_W - w1) / 2), OY(13), t1);
+    u8g2.setFont(u8g2_font_4x6_tr);
+    u8g2.drawStr(OX((OLED_W - w2) / 2), OY(22), t2);
+
+    u8g2.drawHLine(OX(6), OY(OLED_H - 5), OLED_W - 12);
+    u8g2.drawBox(OX(6), OY(OLED_H - 6), OLED_W - 12, 3);
+  }
   u8g2.sendBuffer();
   delay(1000);
 }
@@ -92,41 +104,89 @@ inline void drawRadarScreen(float sweepAngle, float rangeM, int targetsInRange,
   const char *sTag = sensShortLabel(sensMode);
 
   // --- Left / Top HUD Telemetry ---
-  char hdr[20];
-  snprintf(hdr, sizeof(hdr), "RAD[%s] %s", fTag, sTag);
-  u8g2.drawStr(OX(0), OY(6), hdr);
+  if (OLED_W < 100) {
+    // Compact Cockpit HUD for 0.42" (72x40) Display (Radar Scope on Right)
+    char hdr[16];
+    snprintf(hdr, sizeof(hdr), "R:%s %.3s", fTag, sTag);
+    u8g2.drawStr(OX(0), OY(6), hdr);
 
-  char statStr[20];
-  if (newDevice) {
-    snprintf(statStr, sizeof(statStr), "! NEW CONTACT");
-    u8g2.drawBox(OX(0), OY(8), 54, 8);
-    u8g2.setDrawColor(0);
-    u8g2.drawStr(OX(2), OY(14), statStr);
-    u8g2.setDrawColor(1);
-  } else if (targetsInRange > 0) {
-    snprintf(statStr, sizeof(statStr), "! TARGETS: %02d", targetsInRange);
-    u8g2.drawBox(OX(0), OY(8), 56, 8);
-    u8g2.setDrawColor(0);
-    u8g2.drawStr(OX(2), OY(14), statStr);
-    u8g2.setDrawColor(1);
-  } else if (allTrusted && totalActive > 0) {
-    u8g2.drawStr(OX(0), OY(14), "STATUS: CLEAR");
-  } else if (untrustedActive > 0) {
-    snprintf(statStr, sizeof(statStr), "UNTRUST: %02d", untrustedActive);
-    u8g2.drawStr(OX(0), OY(14), statStr);
+    char statStr[16];
+    if (newDevice) {
+      u8g2.drawBox(OX(0), OY(7), 34, 7);
+      u8g2.setDrawColor(0);
+      u8g2.drawStr(OX(1), OY(13), "NEW!");
+      u8g2.setDrawColor(1);
+    } else if (targetsInRange > 0) {
+      u8g2.drawBox(OX(0), OY(7), 34, 7);
+      u8g2.setDrawColor(0);
+      snprintf(statStr, sizeof(statStr), "TGT:%d", targetsInRange);
+      u8g2.drawStr(OX(1), OY(13), statStr);
+      u8g2.setDrawColor(1);
+    } else if (allTrusted && totalActive > 0) {
+      u8g2.drawStr(OX(0), OY(13), "CLEAR");
+    } else if (untrustedActive > 0) {
+      snprintf(statStr, sizeof(statStr), "UNT:%d", untrustedActive);
+      u8g2.drawStr(OX(0), OY(13), statStr);
+    } else {
+      u8g2.drawStr(OX(0), OY(13), pulse ? "SCAN." : "SCAN ");
+    }
+
+    char devStr[16];
+    snprintf(devStr, sizeof(devStr), "DEV:%d", totalActive);
+    u8g2.drawStr(OX(0), OY(21), devStr);
+
+#if USE_4_BUTTONS
+    if (muted) u8g2.drawStr(OX(0), OY(29), "[MUTE]");
+    else u8g2.drawStr(OX(0), OY(29), "B2:MNU");
+    u8g2.drawStr(OX(0), OY(36), "B1:FND");
+#else
+    if (muted) u8g2.drawStr(OX(0), OY(29), "[MUTE]");
+    else u8g2.drawStr(OX(0), OY(29), "[SENS]");
+    u8g2.drawStr(OX(0), OY(36), "B1:FIND");
+#endif
   } else {
-    snprintf(statStr, sizeof(statStr), pulse ? "SWEEPING ." : "SWEEPING...");
-    u8g2.drawStr(OX(0), OY(14), statStr);
+    // Wide HUD for S3 (128x32) or External Displays (128x64)
+    char hdr[20];
+    snprintf(hdr, sizeof(hdr), "RAD[%s] %s", fTag, sTag);
+    u8g2.drawStr(OX(0), OY(6), hdr);
+
+    char statStr[20];
+    if (newDevice) {
+      snprintf(statStr, sizeof(statStr), "! NEW CONTACT");
+      u8g2.drawBox(OX(0), OY(8), 54, 8);
+      u8g2.setDrawColor(0);
+      u8g2.drawStr(OX(2), OY(14), statStr);
+      u8g2.setDrawColor(1);
+    } else if (targetsInRange > 0) {
+      snprintf(statStr, sizeof(statStr), "! TARGETS: %02d", targetsInRange);
+      u8g2.drawBox(OX(0), OY(8), 56, 8);
+      u8g2.setDrawColor(0);
+      u8g2.drawStr(OX(2), OY(14), statStr);
+      u8g2.setDrawColor(1);
+    } else if (allTrusted && totalActive > 0) {
+      u8g2.drawStr(OX(0), OY(14), "STATUS: CLEAR");
+    } else if (untrustedActive > 0) {
+      snprintf(statStr, sizeof(statStr), "UNTRUST: %02d", untrustedActive);
+      u8g2.drawStr(OX(0), OY(14), statStr);
+    } else {
+      snprintf(statStr, sizeof(statStr), pulse ? "SWEEPING ." : "SWEEPING...");
+      u8g2.drawStr(OX(0), OY(14), statStr);
+    }
+
+    char devStr[20];
+    snprintf(devStr, sizeof(devStr), "DEVICES: %02d", totalActive);
+    u8g2.drawStr(OX(0), OY(21), devStr);
+
+    char footStr[20];
+#if USE_4_BUTTONS
+    if (muted) snprintf(footStr, sizeof(footStr), "[MUTED] B2:MENU");
+    else snprintf(footStr, sizeof(footStr), "[B1]FIND [B2]MENU");
+#else
+    if (muted) snprintf(footStr, sizeof(footStr), "[MUTED] B2:SENS");
+    else snprintf(footStr, sizeof(footStr), "[B1]FIND [B2]SENS");
+#endif
+    u8g2.drawStr(OX(0), OY(29), footStr);
   }
-
-  char devStr[20];
-  snprintf(devStr, sizeof(devStr), "DEVICES: %02d", totalActive);
-  u8g2.drawStr(OX(0), OY(21), devStr);
-
-  char footStr[20];
-  if (muted) snprintf(footStr, sizeof(footStr), "[MUTED] B2:SENS");
-  else snprintf(footStr, sizeof(footStr), "[B1]FIND [B2]SENS");
-  u8g2.drawStr(OX(0), OY(29), footStr);
 
   // --- Sci-Fi Radar Scope Graphics ---
   // Outer range ring and mid ring
@@ -200,16 +260,26 @@ inline void drawFinderScreen(bool haveTarget, const Candidate *c, bool unconfirm
                               int posIdx, int posCount, TargetFilter targetFilter,
                               SensitivityMode sensMode, int8_t peakRssi) {
   u8g2.clearBuffer();
-  u8g2.setFont(u8g2_font_5x8_tr);
 
   const char *fPrefix = (targetFilter == TARGET_ALL_DEV) ? "LOCK[ALL]" : "LOCK[CAM]";
   if (!haveTarget) {
-    char h[24]; snprintf(h, sizeof(h), "%s%s", fPrefix, muted ? " [M]" : " SCAN");
-    u8g2.drawStr(OX(0), OY(8), h);
-    u8g2.setFont(u8g2_font_4x6_tr);
-    u8g2.drawStr(OX(0), OY(18), "NO TARGET ACQUIRED");
-    u8g2.drawStr(OX(0), OY(27), "SWEEPING FREQUENCIES...");
-    u8g2.drawStr(OX(0), OY(35), "[B1] RADAR");
+    if (OLED_W < 100) {
+      u8g2.setFont(u8g2_font_4x6_tr);
+      char h[16];
+      snprintf(h, sizeof(h), "FIND: %s%s", (targetFilter == TARGET_ALL_DEV) ? "ALL" : "CAM", muted ? " [M]" : "");
+      u8g2.drawStr(OX(0), OY(7), h);
+      u8g2.drawStr(OX(0), OY(17), "NO TARGET YET");
+      u8g2.drawStr(OX(0), OY(27), "SCANNING 2.4GHz");
+      u8g2.drawStr(OX(0), OY(36), "[B1] SURV");
+    } else {
+      u8g2.setFont(u8g2_font_5x8_tr);
+      char h[24]; snprintf(h, sizeof(h), "%s%s", fPrefix, muted ? " [M]" : " SCAN");
+      u8g2.drawStr(OX(0), OY(8), h);
+      u8g2.setFont(u8g2_font_4x6_tr);
+      u8g2.drawStr(OX(0), OY(18), "NO TARGET ACQUIRED");
+      u8g2.drawStr(OX(0), OY(27), "SWEEPING FREQUENCIES...");
+      u8g2.drawStr(OX(0), OY(35), "[B1] SURVEY");
+    }
     u8g2.sendBuffer();
     return;
   }
@@ -217,17 +287,33 @@ inline void drawFinderScreen(bool haveTarget, const Candidate *c, bool unconfirm
   // Header with device tag
   const char *tag = c->label[0] ? c->label : (c->hasName ? c->name : "UNKNOWN");
   char hdr[24];
-  snprintf(hdr, sizeof(hdr), "F:%.6s%s", tag, c->trusted ? "*" : (unconfirmed ? "?" : ""));
-  u8g2.drawStr(OX(0), OY(8), hdr);
+  if (OLED_W < 100) {
+    u8g2.setFont(u8g2_font_4x6_tr);
+    snprintf(hdr, sizeof(hdr), "F:%.6s%s", tag, c->trusted ? "*" : (unconfirmed ? "?" : ""));
+    u8g2.drawStr(OX(0), OY(7), hdr);
 
-  char rightTag[16];
-  if (posCount > 0) snprintf(rightTag, sizeof(rightTag), "%s%d/%d", muted ? "M " : "", posIdx + 1, posCount);
-  else snprintf(rightTag, sizeof(rightTag), "%s", muted ? "M" : "");
-  int rw = u8g2.getStrWidth(rightTag);
-  u8g2.drawStr(OX(OLED_W - rw), OY(8), rightTag);
+    char rightTag[12];
+    if (posCount > 0) snprintf(rightTag, sizeof(rightTag), "%s%d/%d", muted ? "M " : "", posIdx + 1, posCount);
+    else snprintf(rightTag, sizeof(rightTag), "%s", muted ? "M" : "");
+    int rw = u8g2.getStrWidth(rightTag);
+    u8g2.drawStr(OX(OLED_W - rw), OY(7), rightTag);
+  } else {
+    u8g2.setFont(u8g2_font_5x8_tr);
+    snprintf(hdr, sizeof(hdr), "F:%.8s%s", tag, c->trusted ? "*" : (unconfirmed ? "?" : ""));
+    u8g2.drawStr(OX(0), OY(8), hdr);
+
+    char rightTag[16];
+    if (posCount > 0) snprintf(rightTag, sizeof(rightTag), "%s%d/%d", muted ? "M " : "", posIdx + 1, posCount);
+    else snprintf(rightTag, sizeof(rightTag), "%s", muted ? "M" : "");
+    int rw = u8g2.getStrWidth(rightTag);
+    u8g2.drawStr(OX(OLED_W - rw), OY(8), rightTag);
+  }
 
   // Segmented Signal Strength Meter
-  int barX = 2, barY = 10, barW = FINDER_BAR_W, barH = 6;
+  int barX = 2;
+  int barY = (OLED_W < 100) ? 10 : ((OLED_H >= 40) ? 12 : 10);
+  int barW = (OLED_W < 100) ? (OLED_W - 4) : FINDER_BAR_W;
+  int barH = (OLED_H >= 40) ? 7 : 6;
   u8g2.drawFrame(OX(barX), OY(barY), barW, barH);
   int fillPx = map(constrain(c->rssi, -95, -30), -95, -30, 0, barW - 2);
   if (fillPx > 0) u8g2.drawBox(OX(barX + 1), OY(barY + 1), fillPx, barH - 2);
@@ -243,15 +329,22 @@ inline void drawFinderScreen(bool haveTarget, const Candidate *c, bool unconfirm
   // Telemetry Line: RSSI dBm + Proximity % + Source Type
   int signalPercent = map(constrain(c->rssi, -95, -30), -95, -30, 0, 100);
   char dbmStr[24];
-  snprintf(dbmStr, sizeof(dbmStr), "%ddB (%d%%) %s", c->rssi, signalPercent, sourceLabel(c->source));
   u8g2.setFont(u8g2_font_4x6_tr);
-  u8g2.drawStr(OX(0), OY(23), dbmStr);
+  if (OLED_W < 100) {
+    const char *srcStr = (c->source == SRC_BLE) ? "BLE" : (c->source == SRC_WIFI_AP ? "AP" : "STA");
+    snprintf(dbmStr, sizeof(dbmStr), "%ddB %d%% %s", c->rssi, signalPercent, srcStr);
+    u8g2.drawStr(OX(0), OY(25), dbmStr);
+  } else {
+    snprintf(dbmStr, sizeof(dbmStr), "%ddB (%d%%) %s", c->rssi, signalPercent, sourceLabel(c->source));
+    int dbmY = (OLED_H >= 40) ? 26 : 23;
+    u8g2.drawStr(OX(0), OY(dbmY), dbmStr);
+  }
 
   // Proximity guidance / trend & Sensitivity mode badge
   static int8_t prevRssi = -100;
   const char *trend;
-  if (c->trusted) trend = "TRUSTED BASE";
-  else if (c->rssi >= -40) trend = "PINPOINT CONTACT!";
+  if (c->trusted) trend = "TRUSTED";
+  else if (c->rssi >= -40) trend = (OLED_W < 100) ? "PINPOINT!" : "PINPOINT CONTACT!";
   else if (c->rssi > prevRssi + 1) trend = "WARMER (+)";
   else if (c->rssi < prevRssi - 1) trend = "colder (-)";
   else trend = "STEADY";
@@ -259,7 +352,8 @@ inline void drawFinderScreen(bool haveTarget, const Candidate *c, bool unconfirm
 
   char footer[28];
   snprintf(footer, sizeof(footer), "%s [%s]", trend, sensShortLabel(sensMode));
-  u8g2.drawStr(OX(0), OY(31), footer);
+  int footY = (OLED_W < 100) ? 35 : ((OLED_H >= 40) ? 36 : 31);
+  u8g2.drawStr(OX(0), OY(footY), footer);
 
   u8g2.sendBuffer();
 }
@@ -270,23 +364,58 @@ inline void drawDevicePickScreen(const char *title, const char *footer,
   u8g2.clearBuffer();
   u8g2.setFont(u8g2_font_4x6_tr);
 
-  char hdr[24];
-  snprintf(hdr, sizeof(hdr), "/// %s /// %d/%d", title, idx + 1, count);
-  u8g2.drawStr(OX(0), OY(6), hdr);
-  u8g2.drawHLine(OX(0), OY(8), OLED_W);
+  if (OLED_W < 100) {
+    const char *shortTitle = (strstr(title, "KNOWN") != NULL) ? "KNOWN DEV" : "SELECT DEV";
+    u8g2.drawStr(OX(0), OY(6), shortTitle);
+    char pos[10]; snprintf(pos, sizeof(pos), "%d/%d", idx + 1, count);
+    int pw = u8g2.getStrWidth(pos);
+    u8g2.drawStr(OX(OLED_W - pw), OY(6), pos);
+    u8g2.drawHLine(OX(0), OY(8), OLED_W);
 
-  u8g2.setFont(u8g2_font_5x8_tr);
-  const char *tag = c->label[0] ? c->label : (c->hasName ? c->name : "UNKNOWN");
-  char l1[24];
-  snprintf(l1, sizeof(l1), "%s%.10s", c->trusted ? "[*] " : "[ ] ", tag);
-  u8g2.drawStr(OX(0), OY(18), l1);
+    const char *tag = c->label[0] ? c->label : (c->hasName ? c->name : "UNKNOWN");
+    char l1[20];
+    snprintf(l1, sizeof(l1), "%s%.11s", c->trusted ? "[*] " : "[ ] ", tag);
+    u8g2.drawStr(OX(0), OY(16), l1);
 
-  char l2[24];
-  snprintf(l2, sizeof(l2), "%s  %ddBm", sourceLabel(c->source), c->rssi);
-  u8g2.setFont(u8g2_font_4x6_tr);
-  u8g2.drawStr(OX(0), OY(25), l2);
+    char l2[20];
+    const char *srcStr = (c->source == SRC_BLE) ? "BLE" : (c->source == SRC_WIFI_AP ? "WiFi-AP" : "WiFi-STA");
+    snprintf(l2, sizeof(l2), "%s %ddBm", srcStr, c->rssi);
+    u8g2.drawStr(OX(0), OY(25), l2);
 
-  u8g2.drawStr(OX(0), OY(31), footer);
+    if (strstr(title, "KNOWN") != NULL) {
+      char f[20];
+#if USE_4_BUTTONS
+      snprintf(f, sizeof(f), "B1:BACK B2:%s", c->trusted ? "UNTR" : "TRST");
+#else
+      snprintf(f, sizeof(f), "B2:%s B1:NXT", c->trusted ? "UNTR" : "TRUST");
+#endif
+      u8g2.drawStr(OX(0), OY(35), f);
+    } else {
+#if USE_4_BUTTONS
+      u8g2.drawStr(OX(0), OY(35), "B1:BACK  B2:USE");
+#else
+      u8g2.drawStr(OX(0), OY(35), "B1:NEXT  B2:USE");
+#endif
+    }
+  } else {
+    char hdr[24];
+    snprintf(hdr, sizeof(hdr), "/// %s /// %d/%d", title, idx + 1, count);
+    u8g2.drawStr(OX(0), OY(6), hdr);
+    u8g2.drawHLine(OX(0), OY(8), OLED_W);
+
+    u8g2.setFont(u8g2_font_5x8_tr);
+    const char *tag = c->label[0] ? c->label : (c->hasName ? c->name : "UNKNOWN");
+    char l1[24];
+    snprintf(l1, sizeof(l1), "%s%.10s", c->trusted ? "[*] " : "[ ] ", tag);
+    u8g2.drawStr(OX(0), OY(18), l1);
+
+    char l2[24];
+    snprintf(l2, sizeof(l2), "%s  %ddBm", sourceLabel(c->source), c->rssi);
+    u8g2.setFont(u8g2_font_4x6_tr);
+    u8g2.drawStr(OX(0), OY(25), l2);
+
+    u8g2.drawStr(OX(0), OY(31), footer);
+  }
 
   u8g2.sendBuffer();
 }
@@ -296,37 +425,57 @@ inline void drawMenuScreen(const char *title, const char *itemLabel, const char 
   u8g2.clearBuffer();
   u8g2.setFont(u8g2_font_4x6_tr);
 
-  // Top header bar with index
-  char hdr[24];
-  if (OLED_W >= 100) {
+  if (OLED_W < 100) {
+    u8g2.drawStr(OX(0), OY(6), "SYSTEM MENU");
+    char pos[10]; snprintf(pos, sizeof(pos), "%d/%d", idx + 1, count);
+    int pw = u8g2.getStrWidth(pos);
+    u8g2.drawStr(OX(OLED_W - pw), OY(6), pos);
+    u8g2.drawHLine(OX(0), OY(8), OLED_W);
+
+    char itemBuf[24];
+    snprintf(itemBuf, sizeof(itemBuf), "> %.15s", itemLabel);
+    u8g2.drawStr(OX(0), OY(17), itemBuf);
+
+    char valBuf[24];
+    if (itemValue && itemValue[0]) {
+      snprintf(valBuf, sizeof(valBuf), "[ %.14s ]", itemValue);
+    } else {
+      snprintf(valBuf, sizeof(valBuf), "[ SELECT ]");
+    }
+    int vw = u8g2.getStrWidth(valBuf);
+    int vx = (OLED_W - vw) / 2; if (vx < 0) vx = 0;
+    u8g2.drawStr(OX(vx), OY(26), valBuf);
+
+#if USE_4_BUTTONS
+    u8g2.drawStr(OX(0), OY(36), "B1:BACK  B2:OK");
+#else
+    u8g2.drawStr(OX(0), OY(36), "B1:NEXT  B2:OK");
+#endif
+  } else {
+    char hdr[24];
     snprintf(hdr, sizeof(hdr), "/// %s ///  %02d/%02d", title, idx + 1, count);
-  } else {
-    snprintf(hdr, sizeof(hdr), "// %s // %d/%d", title, idx + 1, count);
-  }
-  u8g2.drawStr(OX(0), OY(6), hdr);
-  u8g2.drawHLine(OX(0), OY(8), OLED_W);
+    u8g2.drawStr(OX(0), OY(6), hdr);
+    u8g2.drawHLine(OX(0), OY(8), OLED_W);
 
-  // Highlighted item title
-  u8g2.setFont(u8g2_font_5x8_tr);
-  char itemBuf[24];
-  snprintf(itemBuf, sizeof(itemBuf), "> %s", itemLabel);
-  u8g2.drawStr(OX(0), OY(17), itemBuf);
+    u8g2.setFont(u8g2_font_5x8_tr);
+    char itemBuf[24];
+    snprintf(itemBuf, sizeof(itemBuf), "> %s", itemLabel);
+    u8g2.drawStr(OX(0), OY(17), itemBuf);
 
-  // Value badge in sci-fi bracket
-  u8g2.setFont(u8g2_font_4x6_tr);
-  char valBuf[28];
-  if (itemValue && itemValue[0]) {
-    snprintf(valBuf, sizeof(valBuf), "[ %s ]", itemValue);
-  } else {
-    snprintf(valBuf, sizeof(valBuf), "[ SELECT ]");
-  }
-  u8g2.drawStr(OX(6), OY(25), valBuf);
+    u8g2.setFont(u8g2_font_4x6_tr);
+    char valBuf[28];
+    if (itemValue && itemValue[0]) {
+      snprintf(valBuf, sizeof(valBuf), "[ %s ]", itemValue);
+    } else {
+      snprintf(valBuf, sizeof(valBuf), "[ SELECT ]");
+    }
+    u8g2.drawStr(OX(6), OY(25), valBuf);
 
-  // Footer: 2-Button controls guide
-  if (OLED_W >= 100) {
+#if USE_4_BUTTONS
+    u8g2.drawStr(OX(0), OY(31), "[B1] BACK   [B2] CHANGE");
+#else
     u8g2.drawStr(OX(0), OY(31), "[B1] NEXT   [B2] CHANGE");
-  } else {
-    u8g2.drawStr(OX(0), OY(38), "B1:NEXT  B2:OK");
+#endif
   }
 
   u8g2.sendBuffer();
@@ -335,12 +484,20 @@ inline void drawMenuScreen(const char *title, const char *itemLabel, const char 
 // Generic instruction screen for calibration wizard
 inline void drawTextScreen(const char *l0, const char *l1, const char *l2, const char *l3) {
   u8g2.clearBuffer();
-  u8g2.setFont(u8g2_font_5x8_tr);
-  if (l0 && l0[0]) u8g2.drawStr(OX(0), OY(8), l0);
-  u8g2.setFont(u8g2_font_4x6_tr);
-  if (l1 && l1[0]) u8g2.drawStr(OX(0), OY(16), l1);
-  if (l2 && l2[0]) u8g2.drawStr(OX(0), OY(24), l2);
-  if (l3 && l3[0]) u8g2.drawStr(OX(0), OY(31), l3);
+  if (OLED_W < 100) {
+    u8g2.setFont(u8g2_font_4x6_tr);
+    if (l0 && l0[0]) u8g2.drawStr(OX(0), OY(7), l0);
+    if (l1 && l1[0]) u8g2.drawStr(OX(0), OY(16), l1);
+    if (l2 && l2[0]) u8g2.drawStr(OX(0), OY(25), l2);
+    if (l3 && l3[0]) u8g2.drawStr(OX(0), OY(35), l3);
+  } else {
+    u8g2.setFont(u8g2_font_5x8_tr);
+    if (l0 && l0[0]) u8g2.drawStr(OX(0), OY(8), l0);
+    u8g2.setFont(u8g2_font_4x6_tr);
+    if (l1 && l1[0]) u8g2.drawStr(OX(0), OY(16), l1);
+    if (l2 && l2[0]) u8g2.drawStr(OX(0), OY(24), l2);
+    if (l3 && l3[0]) u8g2.drawStr(OX(0), OY(31), l3);
+  }
   u8g2.sendBuffer();
 }
 
@@ -356,46 +513,91 @@ inline void drawGameScreen(int lane, const GameEntity *entities, int entityCount
                            int score, int highScore, bool started, bool finished,
                            bool newHighScore, uint8_t roadAnimOffset) {
   u8g2.clearBuffer();
-  u8g2.setFont(u8g2_font_5x8_tr);
 
   if (finished) {
-    if (newHighScore) {
-      u8g2.drawStr(OX(0), OY(8), "* NEW HIGH SCORE! *");
-      char sc[24]; snprintf(sc, sizeof(sc), "SCORE: %03d", score);
-      u8g2.drawStr(OX(0), OY(17), sc);
+    if (OLED_W < 100) {
+      u8g2.setFont(u8g2_font_4x6_tr);
+      if (newHighScore) {
+        u8g2.drawStr(OX(0), OY(7), "* NEW RECORD! *");
+        char sc[20]; snprintf(sc, sizeof(sc), "SCORE: %03d", score);
+        u8g2.drawStr(OX(0), OY(16), sc);
+      } else {
+        char hdr[20]; snprintf(hdr, sizeof(hdr), "CRASH! SC:%03d", score);
+        u8g2.drawStr(OX(0), OY(7), hdr);
+        char hs[20]; snprintf(hs, sizeof(hs), "BEST: %03d", highScore);
+        u8g2.drawStr(OX(0), OY(16), hs);
+      }
+#if USE_4_BUTTONS
+      u8g2.drawStr(OX(0), OY(26), "B2: REPLAY");
+      u8g2.drawStr(OX(0), OY(36), "B1: EXIT");
+#else
+      u8g2.drawStr(OX(0), OY(26), "B1/B2: REPLAY");
+      u8g2.drawStr(OX(0), OY(36), "HOLD B1: EXIT");
+#endif
     } else {
-      char hdr[24]; snprintf(hdr, sizeof(hdr), "CRASHED! SC:%03d", score);
-      u8g2.drawStr(OX(0), OY(8), hdr);
-      char hs[24]; snprintf(hs, sizeof(hs), "BEST: %03d", highScore);
-      u8g2.drawStr(OX(0), OY(17), hs);
+      u8g2.setFont(u8g2_font_5x8_tr);
+      if (newHighScore) {
+        u8g2.drawStr(OX(0), OY(8), "* NEW HIGH SCORE! *");
+        char sc[24]; snprintf(sc, sizeof(sc), "SCORE: %03d", score);
+        u8g2.drawStr(OX(0), OY(17), sc);
+      } else {
+        char hdr[24]; snprintf(hdr, sizeof(hdr), "CRASHED! SC:%03d", score);
+        u8g2.drawStr(OX(0), OY(8), hdr);
+        char hs[24]; snprintf(hs, sizeof(hs), "BEST: %03d", highScore);
+        u8g2.drawStr(OX(0), OY(17), hs);
+      }
+      u8g2.setFont(u8g2_font_4x6_tr);
+#if USE_4_BUTTONS
+      u8g2.drawStr(OX(0), OY(25), "[B2] PLAY AGAIN");
+      u8g2.drawStr(OX(0), OY(31), "[B1] EXIT");
+#else
+      u8g2.drawStr(OX(0), OY(25), "[B1/B2] PLAY AGAIN");
+      u8g2.drawStr(OX(0), OY(31), "HOLD [B1] EXIT");
+#endif
     }
-    u8g2.setFont(u8g2_font_4x6_tr);
-    u8g2.drawStr(OX(0), OY(25), "[B1/B2] PLAY AGAIN");
-    u8g2.drawStr(OX(0), OY(31), "HOLD [B1] EXIT");
     u8g2.sendBuffer();
     return;
   }
 
   if (!started) {
-    u8g2.drawStr(OX(0), OY(8), "/// SPY EVADER ///");
-    char hs[24]; snprintf(hs, sizeof(hs), "RECORD: %03d PTS", highScore);
-    u8g2.setFont(u8g2_font_4x6_tr);
-    u8g2.drawStr(OX(0), OY(17), hs);
-    u8g2.drawStr(OX(0), OY(25), "B1:LEFT   B2:RIGHT");
-    u8g2.drawStr(OX(0), OY(31), "PRESS B1/B2 START");
+    if (OLED_W < 100) {
+      u8g2.setFont(u8g2_font_4x6_tr);
+      u8g2.drawStr(OX(0), OY(7), "// SPY EVADER //");
+      char hs[20]; snprintf(hs, sizeof(hs), "RECORD: %03d", highScore);
+      u8g2.drawStr(OX(0), OY(16), hs);
+      u8g2.drawStr(OX(0), OY(26), "B1:LEFT  B2:RIGHT");
+#if USE_4_BUTTONS
+      u8g2.drawStr(OX(0), OY(36), "B2:START B1:EXIT");
+#else
+      u8g2.drawStr(OX(0), OY(36), "PRESS B1/B2 GO");
+#endif
+    } else {
+      u8g2.setFont(u8g2_font_5x8_tr);
+      u8g2.drawStr(OX(0), OY(8), "/// SPY EVADER ///");
+      char hs[24]; snprintf(hs, sizeof(hs), "RECORD: %03d PTS", highScore);
+      u8g2.setFont(u8g2_font_4x6_tr);
+      u8g2.drawStr(OX(0), OY(17), hs);
+      u8g2.drawStr(OX(0), OY(25), "B1:LEFT   B2:RIGHT");
+#if USE_4_BUTTONS
+      u8g2.drawStr(OX(0), OY(31), "[B2] START  [B1] EXIT");
+#else
+      u8g2.drawStr(OX(0), OY(31), "PRESS B1/B2 START");
+#endif
+    }
     u8g2.sendBuffer();
     return;
   }
 
   // Active Game HUD
-  char header[24];
-  snprintf(header, sizeof(header), "SC:%03d", score);
-  u8g2.drawStr(OX(0), OY(7), header);
+  u8g2.setFont(u8g2_font_4x6_tr);
+  char header[16];
+  snprintf(header, sizeof(header), "SC:%d", score);
+  u8g2.drawStr(OX(0), OY(6), header);
 
   char hiStr[16];
-  snprintf(hiStr, sizeof(hiStr), "HI:%03d", highScore);
+  snprintf(hiStr, sizeof(hiStr), "HI:%d", highScore);
   int hiW = u8g2.getStrWidth(hiStr);
-  u8g2.drawStr(OX(OLED_W - hiW), OY(7), hiStr);
+  u8g2.drawStr(OX(OLED_W - hiW), OY(6), hiStr);
 
   int laneW = OLED_W / 3;
   int laneX[3] = { laneW / 2, laneW + laneW / 2, laneW * 2 + laneW / 2 };
@@ -439,6 +641,189 @@ inline void drawGameScreen(int lane, const GameEntity *entities, int entityCount
   u8g2.drawPixel(OX(px), OY(playerY + 1));
   u8g2.drawPixel(OX(px - 4), OY(playerY + 5));
   u8g2.drawPixel(OX(px + 4), OY(playerY + 5));
+
+  u8g2.sendBuffer();
+}
+
+// ============================================================
+//  Wi-Fi Signal & Range Survey Mode Screen
+//  Real-time RSSI meter, sweet spot evaluator, and live sparkline
+// ============================================================
+inline void drawSurveyScreen(const Candidate *c, int apIdx, int apCount,
+                             int8_t peakRssi, int8_t minRssi,
+                             const int8_t *history, int histCount,
+                             bool muted) {
+  u8g2.clearBuffer();
+  u8g2.setFont(u8g2_font_4x6_tr);
+
+  if (!c || !c->active) {
+    if (OLED_W < 100) {
+      u8g2.drawStr(OX(0), OY(6), "WIFI SURVEY");
+      u8g2.drawHLine(OX(0), OY(8), 66);
+      u8g2.drawStr(OX(0), OY(18), "SCANNING 2.4G...");
+      u8g2.drawStr(OX(0), OY(27), "SEARCHING APs");
+      u8g2.drawStr(OX(0), OY(36), "[B1] RADAR");
+    } else {
+      u8g2.setFont(u8g2_font_5x8_tr);
+      u8g2.drawStr(OX(0), OY(8), "/// WIFI SURVEY MODE ///");
+      u8g2.drawHLine(OX(0), OY(10), OLED_W);
+      u8g2.setFont(u8g2_font_4x6_tr);
+      u8g2.drawStr(OX(0), OY(19), "SCANNING 2.4GHz CHANNELS 1-13...");
+      u8g2.drawStr(OX(0), OY(27), "SEARCHING FOR WIRELESS ROUTERS & APs");
+      u8g2.drawStr(OX(0), OY(35), "[B1] RADAR");
+    }
+    u8g2.sendBuffer();
+    return;
+  }
+
+  // Identify network & ratings
+  const char *name = (c->hasName && c->name[0]) ? c->name : (c->label[0] ? c->label : "WIFI AP");
+  int qual = constrain(map(c->rssi, -90, -30, 0, 100), 0, 100);
+
+  const char *rating;
+  const char *advice;
+  if (c->rssi >= -50) {
+    rating = (OLED_W < 100) ? "BEST" : "BEST SPOT";
+    advice = "MAX SPEED / 4K";
+  } else if (c->rssi >= -62) {
+    rating = "GREAT";
+    advice = "IDEAL EXTENDER";
+  } else if (c->rssi >= -72) {
+    rating = "GOOD";
+    advice = "NORMAL RANGE";
+  } else if (c->rssi >= -80) {
+    rating = "WEAK";
+    advice = "MOVE CLOSER";
+  } else {
+    rating = (OLED_W < 100) ? "DEAD" : "DEAD ZONE";
+    advice = "RELOCATE AP";
+  }
+
+  if (OLED_W < 100) {
+    // 0.42" 72x40 Compact Cockpit Layout (Max safe width: 66px to fit glass bezel)
+    // Header Line (Y=6)
+    char hdr[16];
+    snprintf(hdr, sizeof(hdr), "%.5s C%d", name, c->channel);
+    u8g2.drawStr(OX(0), OY(6), hdr);
+
+    char pos[10];
+    if (apCount > 0) snprintf(pos, sizeof(pos), "%d/%d", apIdx + 1, apCount);
+    else snprintf(pos, sizeof(pos), "%s", muted ? "M" : "");
+    int pw = u8g2.getStrWidth(pos);
+    u8g2.drawStr(OX(66 - pw), OY(6), pos);
+    u8g2.drawHLine(OX(0), OY(8), 66);
+
+    // Live Readout & Placement Rating (Y=15)
+    char stat[20];
+    snprintf(stat, sizeof(stat), "%ddB %s %d%%", c->rssi, rating, qual);
+    u8g2.drawStr(OX(0), OY(15), stat);
+
+    // Left: Segmented Signal Bar with Peak Hold cursor (Y=18, W=30, H=8)
+    int barX = 0, barY = 18, barW = 30, barH = 8;
+    u8g2.drawFrame(OX(barX), OY(barY), barW, barH);
+    int fillW = map(constrain(c->rssi, -90, -30), -90, -30, 0, barW - 2);
+    if (fillW > 0) u8g2.drawBox(OX(barX + 1), OY(barY + 1), fillW, barH - 2);
+    if (peakRssi >= -90) {
+      int pkX = map(constrain(peakRssi, -90, -30), -90, -30, 0, barW - 2);
+      if (pkX > 0 && pkX < barW - 1) {
+        u8g2.drawVLine(OX(barX + 1 + pkX), OY(barY - 1), barH + 2);
+      }
+    }
+
+    // Right: Live Rolling History Sparkline (Y=18, W=33, H=8, ends at X=66)
+    int gx = 33, gy = 18, gw = 33, gh = 8;
+    u8g2.drawFrame(OX(gx), OY(gy), gw, gh);
+    if (histCount > 1) {
+      int prevPx = -1, prevPy = -1;
+      int maxSamples = (gw - 2) / 2;
+      int startIdx = (histCount > maxSamples) ? (histCount - maxSamples) : 0;
+      int countToDraw = histCount - startIdx;
+      for (int i = 0; i < countToDraw; i++) {
+        int sIdx = startIdx + i;
+        int px = gx + 1 + (i * 2);
+        int py = gy + gh - 2 - map(constrain(history[sIdx], -90, -30), -90, -30, 0, gh - 3);
+        if (prevPx >= 0) {
+          u8g2.drawLine(OX(prevPx), OY(prevPy), OX(px), OY(py));
+        } else {
+          u8g2.drawPixel(OX(px), OY(py));
+        }
+        prevPx = px;
+        prevPy = py;
+      }
+    }
+
+    // Telemetry Footer (Y=36)
+    char foot[16];
+    snprintf(foot, sizeof(foot), "PK:%ddB", peakRssi);
+    u8g2.drawStr(OX(0), OY(36), foot);
+    const char *prompt = "B1:RAD";
+    int bw = u8g2.getStrWidth(prompt);
+    u8g2.drawStr(OX(66 - bw), OY(36), prompt);
+  } else {
+    // 128-pixel Wide Layout (128x32 or 128x64)
+    u8g2.setFont(u8g2_font_5x8_tr);
+    char hdr[32];
+    snprintf(hdr, sizeof(hdr), "SURVEY: %.10s C:%d", name, c->channel);
+    u8g2.drawStr(OX(0), OY(8), hdr);
+
+    char pos[16];
+    if (apCount > 0) snprintf(pos, sizeof(pos), "%s%d/%d", muted ? "M " : "", apIdx + 1, apCount);
+    else snprintf(pos, sizeof(pos), "%s", muted ? "[M]" : "");
+    int pw = u8g2.getStrWidth(pos);
+    u8g2.drawStr(OX(OLED_W - pw), OY(8), pos);
+
+    u8g2.setFont(u8g2_font_4x6_tr);
+    char stat[40];
+    snprintf(stat, sizeof(stat), "%ddBm [%d%%]  %s (%s)", c->rssi, qual, rating, advice);
+    int statY = (OLED_H >= 40) ? 18 : 17;
+    u8g2.drawStr(OX(0), OY(statY), stat);
+
+    // Left: Wide Segmented Signal Bar
+    int barX = 0;
+    int barY = (OLED_H >= 40) ? 22 : 19;
+    int barW = (OLED_W >= 120) ? 68 : 50;
+    int barH = (OLED_H >= 40) ? 9 : 6;
+    u8g2.drawFrame(OX(barX), OY(barY), barW, barH);
+    int fillW = map(constrain(c->rssi, -90, -30), -90, -30, 0, barW - 2);
+    if (fillW > 0) u8g2.drawBox(OX(barX + 1), OY(barY + 1), fillW, barH - 2);
+    if (peakRssi >= -90) {
+      int pkX = map(constrain(peakRssi, -90, -30), -90, -30, 0, barW - 2);
+      if (pkX > 0 && pkX < barW - 1) {
+        u8g2.drawVLine(OX(barX + 1 + pkX), OY(barY - 1), barH + 2);
+      }
+    }
+
+    // Right: Live History Sparkline Graph
+    int gx = barX + barW + 4;
+    int gw = OLED_W - gx - 1;
+    int gy = barY;
+    int gh = barH;
+    u8g2.drawFrame(OX(gx), OY(gy), gw, gh);
+    if (histCount > 1) {
+      int prevPx = -1, prevPy = -1;
+      int maxSamples = (gw - 2) / 2;
+      int startIdx = (histCount > maxSamples) ? (histCount - maxSamples) : 0;
+      int countToDraw = histCount - startIdx;
+      for (int i = 0; i < countToDraw; i++) {
+        int sIdx = startIdx + i;
+        int px = gx + 1 + (i * 2);
+        int py = gy + gh - 2 - map(constrain(history[sIdx], -90, -30), -90, -30, 0, gh - 3);
+        if (prevPx >= 0) {
+          u8g2.drawLine(OX(prevPx), OY(prevPy), OX(px), OY(py));
+        } else {
+          u8g2.drawPixel(OX(px), OY(py));
+        }
+        prevPx = px;
+        prevPy = py;
+      }
+    }
+
+    // Footer
+    char foot[40];
+    snprintf(foot, sizeof(foot), "PK:%ddB MN:%ddB  [B1]RAD [B2]RST [B3/4]AP", peakRssi, minRssi);
+    int footY = (OLED_H >= 40) ? 37 : 31;
+    u8g2.drawStr(OX(0), OY(footY), foot);
+  }
 
   u8g2.sendBuffer();
 }
