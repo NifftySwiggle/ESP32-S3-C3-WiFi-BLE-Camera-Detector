@@ -4,13 +4,18 @@
 //
 //  RADAR   - sweeping radar; beeps + LED flash on target contact
 //  FINDER  - pinpoint proximity tracker with peak hold & geiger audio
+//  SURVEY  - Wi-Fi signal & site survey with rolling history sparkline
 //  GAME    - retro arcade minigame ("SPY EVADER") with sound FX & high scores
 //
 //  Controls:
 //  Button 1 short  -> switch RADAR <-> FINDER (or Move Left in Game)
+//  Button 1 short  -> cycle RADAR -> FINDER -> SURVEY -> RADAR (or Move Left in Game / Back in Menu)
 //  Button 1 long   -> open / exit MENU
 //  Button 2 short  -> cycle SENSITIVITY in Radar / next target in Finder / Move Right in Game / Select in Menu
 //  Button 2 long   -> toggle Mute in Radar / Trust target in Finder
+//  Button 2 short  -> 1-click Menu (Radar) / Trust toggle (Finder) / Reset history (Survey) / Select in Menu
+//  Button 2 long   -> toggle Mute (Radar) / open Menu (Finder/Survey)
+//  Button 3 / 4    -> Sensitivity (Radar) / Prev/Next target (Finder) / Prev/Next AP (Survey) / Menu scroll
 // ============================================================
 
 #include <math.h>

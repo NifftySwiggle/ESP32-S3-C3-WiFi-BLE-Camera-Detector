@@ -9,6 +9,7 @@
 ![Version](https://img.shields.io/badge/Version-4.0.0-purple)
 
 **A handheld 2.4 GHz RF & Hidden Camera Detector featuring a futuristic sci-fi cyberpunk HUD, promiscuous packet sniffing, BLE beacon discovery, Geiger proximity audio, and pure 2-button control.**
+**A handheld 2.4 GHz RF & Hidden Camera Detector featuring a futuristic sci-fi cyberpunk HUD, promiscuous packet sniffing, BLE beacon discovery, Wi-Fi site survey mode, Geiger proximity audio, and flexible 4-button or 2-button control.**
 
 </div>
 
@@ -22,6 +23,9 @@
   - [ESP32-S3 (0.91" 128x32 OLED)](#esp32-s3-091-128x32-oled)
   - [ESP32-C3 (0.42" 72x40 OLED)](#esp32-c3-042-72x40-oled)
 - [2-Button Control Reference](#-2-button-control-reference)
+- [Control Reference](#-control-reference)
+  - [4-Button Mode (Default)](#-4-button-mode-use_4_buttons-1---default)
+  - [2-Button Fallback](#-2-button-fallback-use_4_buttons-0)
 - [Display Screens & Modes](#-display-screens--modes)
   - [1. Sci-Fi Radar Scope (`RADAR`)](#1-sci-fi-radar-scope-radar)
   - [2. Signal Homing Analyzer (`FINDER`)](#2-signal-homing-analyzer-finder)
@@ -29,6 +33,11 @@
   - [4. Known Devices Manager](#4-known-devices-manager)
   - [5. RSSI Calibration Wizard](#5-rssi-calibration-wizard)
   - [6. "Spy Evader" Arcade Minigame](#6-spy-evader-arcade-minigame)
+  - [3. Wi-Fi Signal & Range Survey (`SURVEY`)](#3-wi-fi-signal--range-survey-survey)
+  - [4. Cyberpunk System Menu (`MENU`)](#4-cyberpunk-system-menu-menu)
+  - [5. Known Devices Manager](#5-known-devices-manager)
+  - [6. RSSI Calibration Wizard](#6-rssi-calibration-wizard)
+  - [7. "Spy Evader" Arcade Minigame](#7-spy-evader-arcade-minigame)
 - [Detection Modes & Sensitivity](#-detection-modes--sensitivity)
   - [Detection Target Filters](#detection-target-filters)
   - [Sensitivity & Geiger Sniffing Levels](#sensitivity--geiger-sniffing-levels)
@@ -46,6 +55,7 @@
 The **Cyber-Detect RF Sweeper (v4)** turns compact ESP32-C3 or ESP32-S3 microcontrollers into handheld reconnaissance and counter-surveillance tools. By operating in **promiscuous Wi-Fi 802.11 mode** and running background **NimBLE Bluetooth Low Energy scans**, the device passively listens to 2.4 GHz radio frequency broadcasts without joining networks or injecting packets.
 
 Designed from the ground up for streamlined **2-Button Operation**, it eliminates all potentiometer requirements while delivering a responsive, futuristic sci-fi HUD on standard SSD1306 monochrome OLEDs.
+Designed from the ground up for streamlined **4-Button or 2-Button Operation**, it eliminates all potentiometer requirements while delivering a responsive, futuristic sci-fi HUD on standard SSD1306 monochrome OLEDs.
 
 ```
  +---------------------------------------------------------+
@@ -72,6 +82,9 @@ Designed from the ground up for streamlined **2-Button Operation**, it eliminate
   - Rotating radar scope with cardinal alignment ticks (N/S/E/W), trailing phosphor beam line, and expanding target pulse rings.
   - Signal Homing Finder with segmented level meter, **Peak RSSI Hold Cursor (`▼`)**, and Doppler proximity trends (`WARMER ▲▲`, `COLDER ▼▼`).
   - Indexed card-style System Menu with live parameter boxes.
+- **📡 Wi-Fi Signal & Site Survey Mode**:
+  - Real-time RSSI signal meter, AP channel lock, and sweet-spot evaluator (`BEST SPOT`, `IDEAL EXTENDER`, `NORMAL RANGE`, `WEAK`, `DEAD ZONE`).
+  - Rolling history sparkline graph plotting signal fluctuations over time with acoustic survey chirps.
 - **🛡️ Persistent Allow-Listing**:
   - One-click snapshot (`TrustAllNow`) creates an instant room baseline.
   - Allow-listed devices are saved to ESP32 Flash memory (`Preferences`) across reboots.
@@ -151,6 +164,12 @@ With 4 dedicated buttons, everything is fast and 1-click (no long-presses needed
 | **Button 2 (`PIN_BTN_SELECT`)** | **1-Click Open Menu** | **1-Click Trust / Untrust** | **Select / Change Value** | Steer Right / Start / Replay |
 | **Button 3 (`PIN_BTN_UP`)** | Sensitivity UP (`LOW`→`PIN`) | **Previous Target** | **Scroll Menu Up** | Steer Left / Start Round |
 | **Button 4 (`PIN_BTN_DOWN`)** | Sensitivity DOWN (`PIN`→`LOW`) | **Next Target** | **Scroll Menu Down** | Steer Right / Exit Game |
+| Input Action | Radar Scope | Finder Tracker | Wi-Fi Survey Mode | System Menu | Spy Evader Game |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **Button 1 (`PIN_BTN_MODE`)** | Cycle to Finder | Cycle to Survey | Cycle to Radar | **Instant Exit / Back** | Steer Left / Exit (from menu/over) |
+| **Button 2 (`PIN_BTN_SELECT`)** | **1-Click Open Menu** | **1-Click Trust / Untrust** | **Reset Peak & History** | **Select / Change Value** | Steer Right / Start / Replay |
+| **Button 3 (`PIN_BTN_UP`)** | Sensitivity UP (`LOW`→`PIN`) | **Previous Target** | **Previous AP** | **Scroll Menu Up** | Steer Left / Start Round |
+| **Button 4 (`PIN_BTN_DOWN`)** | Sensitivity DOWN (`PIN`→`LOW`) | **Next Target** | **Next AP** | **Scroll Menu Down** | Steer Right / Exit Game |
 
 ### 🕹️ 2-Button Fallback (`USE_4_BUTTONS 0`)
 If only 2 buttons are wired:
@@ -161,6 +180,12 @@ If only 2 buttons are wired:
 | **Button 1 (Long)** | Open System Menu | Open System Menu | Exit to Radar / Finder | Exit to Menu |
 | **Button 2 (Short)** | Cycle Sensitivity | Cycle Target Device | Select / Change Value | Steer Right / Start |
 | **Button 2 (Long)** | Toggle Audio Mute | Toggle Trust / Untrust | Select / Change Value | *Unused* |
+| Input Action | Radar Scope | Finder Tracker | Wi-Fi Survey Mode | System Menu | Spy Evader Game |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **Button 1 (Short)** | Cycle to Finder | Cycle to Survey | Cycle to Radar | Scroll to Next Item | Steer Left / Start |
+| **Button 1 (Long)** | Open System Menu | Open System Menu | Open System Menu | Exit to Previous Screen | Exit to Menu |
+| **Button 2 (Short)** | Cycle Sensitivity | Cycle Target Device | Reset Peak & History | Select / Change Value | Steer Right / Start |
+| **Button 2 (Long)** | Toggle Audio Mute | Toggle Trust / Untrust | Open System Menu | Select / Change Value | *Unused* |
 
 ---
 
@@ -189,29 +214,56 @@ Hold **Button 1** anywhere to enter:
 - **Indexed Card Layout**: Shows current index (`/// SYSTEM MENU /// 03/11`) and divider rule.
 - **Interactive Items**:
   - `OPERATING MODE` → `[ RADAR ]` / `[ FINDER ]`
+### 3. Wi-Fi Signal & Range Survey (`SURVEY`)
+Specialized Wi-Fi site survey and dead-zone locator mode for auditing wireless routers and access points:
+- **Sweet Spot Evaluator**: Evaluates AP signal levels with real-time placement guidance:
+  - `BEST SPOT` / `BEST` ($\ge -50\text{ dBm}$): Maximum throughput and lowest latency; ideal for 4K streaming.
+  - `GREAT` ($-51\text{ to }-62\text{ dBm}$): Optimal location for Wi-Fi mesh / extender placement.
+  - `GOOD` ($-63\text{ to }-72\text{ dBm}$): Standard reliable coverage zone.
+  - `WEAK` ($-73\text{ to }-80\text{ dBm}$): Poor reception; recommendation to move closer.
+  - `DEAD ZONE` / `DEAD` ($< -80\text{ dBm}$): Signal drop-out; relocate router or add node.
+- **Segmented Gauge & Peak Hold**: Dual visual gauge displaying current RSSI bar alongside a vertical line holding maximum detected peak signal.
+- **Rolling History Sparkline Graph**: Real-time sparkline plotting the last 16 signal samples to visualize RF fading, flutter, and multipath interference as you walk around rooms.
+- **Acoustic Survey Chirps**: Dynamic audio pings whose pitch (900 Hz to 2800 Hz) and cadence (600ms down to 45ms) scale with signal proximity.
+- **Channel Lock & AP Cycling**: Displays target SSID and operating channel (`C1`–`C13`), locking receiver dwell time to the target channel with instant AP cycling using Buttons 3 & 4.
+
+### 4. Cyberpunk System Menu (`MENU`)
+Hold **Button 1** anywhere (or press Button 2 in Radar mode) to enter:
+- **Indexed Card Layout**: Shows current index (`/// SYSTEM MENU /// 03/13`) and divider rule.
+- **13 Interactive Items**:
+  - `OPERATING MODE` → `[ RADAR ]` / `[ FINDER ]` / `[ WIFI SURVEY ]`
+  - `WIFI SURVEY` → `[ RANGE & SIGNAL ]`
   - `TARGET FILTER` → `[ ALL DEVICES ]` / `[ CAMERA ONLY ]`
   - `SENSITIVITY` → `[ PINPOINT ]` / `[ HIGH (1.5m) ]` / `[ MED (4.0m) ]` / `[ LOW (12m) ]`
   - `AUDIO VOLUME` → `[ HIGH (100%) ]` / `[ MED (70%) ]` / `[ LOW (30%) ]` / `[ MUTE (0%) ]`
+  - `BUZZER TYPE` → `[ PASSIVE (PWM) ]` / `[ ACTIVE (DC) ]`
   - `SPY EVADER` → `[ LAUNCH GAME ]`
   - `KNOWN DEVICES` → `[ BROWSE LIST ]`
   - `TRUST ALL NOW` → `[ SNAPSHOT BASELINE ]`
   - `CLEAR TRUST` → `[ RESET STORE ]`
+  - `KNOWN DEVICES` → `[ XX DETECTED ]`
+  - `TRUST ALL NOW` → `[ ADD XX ACTIVE ]`
+  - `CLEAR TRUST` → `[ RESET XX SAVED ]`
   - `CALIBRATION` → `[ START WIZARD ]`
   - `RESET DEFAULTS` → `[ RESTORE FACTORY ]`
+  - `RESET DEFAULTS` → `[ RESTORE ]`
   - `EXIT MENU` → `[ RETURN >>> ]`
 
 ### 4. Known Devices Manager
+### 5. Known Devices Manager
 Browse detected devices in the local airspace:
 - Inspect MAC address, vendor/SSID label, source type (`WiFi-AP`, `WiFi-STA`, `BLE`), and RSSI.
 - Press **Button 2** to instantly toggle trust status (`[*] TRUSTED` vs `[ ] UNTRUSTED`).
 
 ### 5. RSSI Calibration Wizard
+### 6. RSSI Calibration Wizard
 Measures path-loss exponents specifically for your physical environment:
 1. **Step 1/2**: Place a known 2.4 GHz reference device (e.g., phone hotspot) exactly **1.0 meter** away and sample RSSI.
 2. **Step 2/2**: Move the device to a secondary distance (selectable: 2.0m–8.0m) and sample again.
 3. Computes and saves the environment's exact Path Loss Exponent ($N$) and reference $1\text{m}$ RSSI ($\text{ref}$) into Flash memory.
 
 ### 6. "Spy Evader" Arcade Minigame
+### 7. "Spy Evader" Arcade Minigame
 Built-in retro arcade driving game:
 - **Responsive Screen Math**: Automatically adapts lane widths to both 128x32 (S3) and 72x40 (C3) screens.
 - **Controls**: Button 1 (Left) and Button 2 (Right) to steer the cyber-car across 3 lanes.
@@ -282,6 +334,7 @@ cameradetectorv2/
 
 ### 1. Promiscuous 802.11 Frame Analysis
 The ESP32 Wi-Fi hardware is configured in promiscuous mode with `WIFI_PROMIS_FILTER_MASK_ALL`. The sniffer callback processes:
+The ESP32 Wi-Fi hardware is configured in promiscuous mode with `WIFI_PROMIS_FILTER_MASK_MGMT | WIFI_PROMIS_FILTER_MASK_DATA`. The sniffer callback processes:
 - **Management Frames**: Beacons, Probe Requests, Probe Responses.
 - **Data Frames**: Extracts Source Address (SA), Transmitter Address (TA), BSSID, and RSSI.
 - **Channel Hopping**: Automatically rotates across 2.4 GHz channels 1 through 14 every 320ms (locking onto the target channel during Finder mode).
