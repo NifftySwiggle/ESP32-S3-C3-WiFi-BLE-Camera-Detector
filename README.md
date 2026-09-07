@@ -57,14 +57,6 @@ The **Cyber-Detect RF Sweeper (v4)** turns compact ESP32-C3 or ESP32-S3 microcon
 Designed from the ground up for streamlined **2-Button Operation**, it eliminates all potentiometer requirements while delivering a responsive, futuristic sci-fi HUD on standard SSD1306 monochrome OLEDs.
 Designed from the ground up for streamlined **4-Button or 2-Button Operation**, it eliminates all potentiometer requirements while delivering a responsive, futuristic sci-fi HUD on standard SSD1306 monochrome OLEDs.
 
-```
- +---------------------------------------------------------+
- | RAD[ALL] PIN       ! TARGETS: 02          .---.         |
- | DEV: 07 (02 UNTR)                         | / | <-- Sweeping
- | [B1]FIND [B2]SENS                         '---'     Scope
- +---------------------------------------------------------+
-```
-
 ---
 
 ## ⚡ Key Features
@@ -214,6 +206,7 @@ Hold **Button 1** anywhere to enter:
 - **Indexed Card Layout**: Shows current index (`/// SYSTEM MENU /// 03/11`) and divider rule.
 - **Interactive Items**:
   - `OPERATING MODE` → `[ RADAR ]` / `[ FINDER ]`
+
 ### 3. Wi-Fi Signal & Range Survey (`SURVEY`)
 Specialized Wi-Fi site survey and dead-zone locator mode for auditing wireless routers and access points:
 - **Sweet Spot Evaluator**: Evaluates AP signal levels with real-time placement guidance:

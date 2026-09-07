@@ -137,12 +137,12 @@ inline void drawRadarScreen(float sweepAngle, float rangeM, int targetsInRange,
 
 #if USE_4_BUTTONS
     if (muted) u8g2.drawStr(OX(0), OY(29), "[MUTE]");
-    else u8g2.drawStr(OX(0), OY(29), "B2:MNU");
-    u8g2.drawStr(OX(0), OY(36), "B1:FND");
+    else u8g2.drawStr(OX(0), OY(29), "0:MENU");
+    u8g2.drawStr(OX(0), OY(36), "3:FIND");
 #else
     if (muted) u8g2.drawStr(OX(0), OY(29), "[MUTE]");
     else u8g2.drawStr(OX(0), OY(29), "[SENS]");
-    u8g2.drawStr(OX(0), OY(36), "B1:FIND");
+    u8g2.drawStr(OX(0), OY(36), "3:FIND");
 #endif
   } else {
     // Wide HUD for S3 (128x32) or External Displays (128x64)
@@ -270,7 +270,7 @@ inline void drawFinderScreen(bool haveTarget, const Candidate *c, bool unconfirm
       u8g2.drawStr(OX(0), OY(7), h);
       u8g2.drawStr(OX(0), OY(17), "NO TARGET YET");
       u8g2.drawStr(OX(0), OY(27), "SCANNING 2.4GHz");
-      u8g2.drawStr(OX(0), OY(36), "[B1] SURV");
+      u8g2.drawStr(OX(0), OY(36), "3:SURV");
     } else {
       u8g2.setFont(u8g2_font_5x8_tr);
       char h[24]; snprintf(h, sizeof(h), "%s%s", fPrefix, muted ? " [M]" : " SCAN");
@@ -296,7 +296,7 @@ inline void drawFinderScreen(bool haveTarget, const Candidate *c, bool unconfirm
     if (posCount > 0) snprintf(rightTag, sizeof(rightTag), "%s%d/%d", muted ? "M " : "", posIdx + 1, posCount);
     else snprintf(rightTag, sizeof(rightTag), "%s", muted ? "M" : "");
     int rw = u8g2.getStrWidth(rightTag);
-    u8g2.drawStr(OX(OLED_W - rw), OY(7), rightTag);
+    u8g2.drawStr(OX(66 - rw), OY(7), rightTag);
   } else {
     u8g2.setFont(u8g2_font_5x8_tr);
     snprintf(hdr, sizeof(hdr), "F:%.8s%s", tag, c->trusted ? "*" : (unconfirmed ? "?" : ""));
@@ -309,10 +309,10 @@ inline void drawFinderScreen(bool haveTarget, const Candidate *c, bool unconfirm
     u8g2.drawStr(OX(OLED_W - rw), OY(8), rightTag);
   }
 
-  // Segmented Signal Strength Meter
-  int barX = 2;
+  // Segmented Signal Strength Meter (kept within safe 66px width on 0.42" OLED)
+  int barX = (OLED_W < 100) ? 0 : 2;
   int barY = (OLED_W < 100) ? 10 : ((OLED_H >= 40) ? 12 : 10);
-  int barW = (OLED_W < 100) ? (OLED_W - 4) : FINDER_BAR_W;
+  int barW = (OLED_W < 100) ? 66 : FINDER_BAR_W;
   int barH = (OLED_H >= 40) ? 7 : 6;
   u8g2.drawFrame(OX(barX), OY(barY), barW, barH);
   int fillPx = map(constrain(c->rssi, -95, -30), -95, -30, 0, barW - 2);
@@ -369,8 +369,8 @@ inline void drawDevicePickScreen(const char *title, const char *footer,
     u8g2.drawStr(OX(0), OY(6), shortTitle);
     char pos[10]; snprintf(pos, sizeof(pos), "%d/%d", idx + 1, count);
     int pw = u8g2.getStrWidth(pos);
-    u8g2.drawStr(OX(OLED_W - pw), OY(6), pos);
-    u8g2.drawHLine(OX(0), OY(8), OLED_W);
+    u8g2.drawStr(OX(66 - pw), OY(6), pos);
+    u8g2.drawHLine(OX(0), OY(8), 66);
 
     const char *tag = c->label[0] ? c->label : (c->hasName ? c->name : "UNKNOWN");
     char l1[20];
@@ -385,16 +385,16 @@ inline void drawDevicePickScreen(const char *title, const char *footer,
     if (strstr(title, "KNOWN") != NULL) {
       char f[20];
 #if USE_4_BUTTONS
-      snprintf(f, sizeof(f), "B1:BACK B2:%s", c->trusted ? "UNTR" : "TRST");
+      snprintf(f, sizeof(f), "3:BCK 0:%s", c->trusted ? "UNTR" : "TRST");
 #else
-      snprintf(f, sizeof(f), "B2:%s B1:NXT", c->trusted ? "UNTR" : "TRUST");
+      snprintf(f, sizeof(f), "0:%s 3:NXT", c->trusted ? "UNTR" : "TRUST");
 #endif
       u8g2.drawStr(OX(0), OY(35), f);
     } else {
 #if USE_4_BUTTONS
-      u8g2.drawStr(OX(0), OY(35), "B1:BACK  B2:USE");
+      u8g2.drawStr(OX(0), OY(35), "3:BACK   0:USE");
 #else
-      u8g2.drawStr(OX(0), OY(35), "B1:NEXT  B2:USE");
+      u8g2.drawStr(OX(0), OY(35), "3:NEXT   0:USE");
 #endif
     }
   } else {
@@ -426,14 +426,14 @@ inline void drawMenuScreen(const char *title, const char *itemLabel, const char 
   u8g2.setFont(u8g2_font_4x6_tr);
 
   if (OLED_W < 100) {
-    u8g2.drawStr(OX(0), OY(6), "SYSTEM MENU");
+    u8g2.drawStr(OX(0), OY(6), "SYS MENU");
     char pos[10]; snprintf(pos, sizeof(pos), "%d/%d", idx + 1, count);
     int pw = u8g2.getStrWidth(pos);
-    u8g2.drawStr(OX(OLED_W - pw), OY(6), pos);
-    u8g2.drawHLine(OX(0), OY(8), OLED_W);
+    u8g2.drawStr(OX(66 - pw), OY(6), pos);
+    u8g2.drawHLine(OX(0), OY(8), 66);
 
     char itemBuf[24];
-    snprintf(itemBuf, sizeof(itemBuf), "> %.15s", itemLabel);
+    snprintf(itemBuf, sizeof(itemBuf), "> %.14s", itemLabel);
     u8g2.drawStr(OX(0), OY(17), itemBuf);
 
     char valBuf[24];
@@ -443,13 +443,13 @@ inline void drawMenuScreen(const char *title, const char *itemLabel, const char 
       snprintf(valBuf, sizeof(valBuf), "[ SELECT ]");
     }
     int vw = u8g2.getStrWidth(valBuf);
-    int vx = (OLED_W - vw) / 2; if (vx < 0) vx = 0;
+    int vx = (66 - vw) / 2; if (vx < 0) vx = 0;
     u8g2.drawStr(OX(vx), OY(26), valBuf);
 
 #if USE_4_BUTTONS
-    u8g2.drawStr(OX(0), OY(36), "B1:BACK  B2:OK");
+    u8g2.drawStr(OX(0), OY(36), "3:BACK   0:OK");
 #else
-    u8g2.drawStr(OX(0), OY(36), "B1:NEXT  B2:OK");
+    u8g2.drawStr(OX(0), OY(36), "3:NEXT   0:OK");
 #endif
   } else {
     char hdr[24];
@@ -756,7 +756,7 @@ inline void drawSurveyScreen(const Candidate *c, int apIdx, int apCount,
     char foot[16];
     snprintf(foot, sizeof(foot), "PK:%ddB", peakRssi);
     u8g2.drawStr(OX(0), OY(36), foot);
-    const char *prompt = "B1:RAD";
+    const char *prompt = "3:RAD";
     int bw = u8g2.getStrWidth(prompt);
     u8g2.drawStr(OX(66 - bw), OY(36), prompt);
   } else {

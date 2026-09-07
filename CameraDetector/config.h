@@ -126,11 +126,15 @@
 #define GAME_TARGET_R 5
 #endif
 
-// ---- 4 Buttons on ESP32-C3 ---------------------------------
-#define PIN_BTN_MODE   0   // Button 1: Mode / Back / Left
-#define PIN_BTN_SELECT 2   // Button 2: Select / Action / Right
-#define PIN_BTN_UP     3   // Button 3: Up / Prev / Sens+
-#define PIN_BTN_DOWN   4   // Button 4: Down / Next / Sens-
+// ---- 4 Buttons on ESP32-C3 (Ergonomic Gamepad Layout) -------
+// Top-Left: Mode / Back (GPIO 3)
+// Top-Right: Menu / Select / Action (GPIO 0)
+// Bottom-Left: Left / Prev / Sens+ (GPIO 4)
+// Bottom-Right: Right / Next / Sens- (GPIO 2)
+#define PIN_BTN_MODE   3   // Button 1: Mode / Back (Top-Left)
+#define PIN_BTN_SELECT 0   // Button 2: Menu / Select / Action (Top-Right)
+#define PIN_BTN_UP     4   // Button 3: Left / Prev / Sens+ (Bottom-Left)
+#define PIN_BTN_DOWN   2   // Button 4: Right / Next / Sens- (Bottom-Right)
 #define PIN_BUZZER     10  // Buzzer (Active or Passive)
 #define PIN_LED        8   // Onboard Blue LED on C3 SuperMini
 #define PIN_LED2       1   // Extra external LED on GPIO 1
