@@ -8,7 +8,6 @@
 ![Radio](https://img.shields.io/badge/Protocols-Wi--Fi%202.4GHz%20%2B%20BLE%205.0-orange)
 ![Version](https://img.shields.io/badge/Version-4.0.0-purple)
 
-**A handheld 2.4 GHz RF & Hidden Camera Detector featuring a futuristic sci-fi cyberpunk HUD, promiscuous packet sniffing, BLE beacon discovery, Geiger proximity audio, and pure 2-button control.**
 **A handheld 2.4 GHz RF & Hidden Camera Detector featuring a futuristic sci-fi cyberpunk HUD, promiscuous packet sniffing, BLE beacon discovery, Wi-Fi site survey mode, Geiger proximity audio, and flexible 4-button or 2-button control.**
 
 </div>
@@ -20,19 +19,15 @@
 - [Overview](#-overview)
 - [Key Features](#-key-features)
 - [Hardware & Wiring](#-hardware--wiring)
+  - [ESP32-C3 (0.42" 72x40 OLED)](#esp32-c3-042-72x40-oled-or-optional-external-oled)
   - [ESP32-S3 (0.91" 128x32 OLED)](#esp32-s3-091-128x32-oled)
-  - [ESP32-C3 (0.42" 72x40 OLED)](#esp32-c3-042-72x40-oled)
-- [2-Button Control Reference](#-2-button-control-reference)
+  - [Active & Passive Buzzer Support](#-active--passive-buzzer-support)
 - [Control Reference](#-control-reference)
   - [4-Button Mode (Default)](#-4-button-mode-use_4_buttons-1---default)
   - [2-Button Fallback](#-2-button-fallback-use_4_buttons-0)
 - [Display Screens & Modes](#-display-screens--modes)
   - [1. Sci-Fi Radar Scope (`RADAR`)](#1-sci-fi-radar-scope-radar)
   - [2. Signal Homing Analyzer (`FINDER`)](#2-signal-homing-analyzer-finder)
-  - [3. Cyberpunk System Menu (`MENU`)](#3-cyberpunk-system-menu-menu)
-  - [4. Known Devices Manager](#4-known-devices-manager)
-  - [5. RSSI Calibration Wizard](#5-rssi-calibration-wizard)
-  - [6. "Spy Evader" Arcade Minigame](#6-spy-evader-arcade-minigame)
   - [3. Wi-Fi Signal & Range Survey (`SURVEY`)](#3-wi-fi-signal--range-survey-survey)
   - [4. Cyberpunk System Menu (`MENU`)](#4-cyberpunk-system-menu-menu)
   - [5. Known Devices Manager](#5-known-devices-manager)
@@ -54,7 +49,6 @@
 
 The **Cyber-Detect RF Sweeper (v4)** turns compact ESP32-C3 or ESP32-S3 microcontrollers into handheld reconnaissance and counter-surveillance tools. By operating in **promiscuous Wi-Fi 802.11 mode** and running background **NimBLE Bluetooth Low Energy scans**, the device passively listens to 2.4 GHz radio frequency broadcasts without joining networks or injecting packets.
 
-Designed from the ground up for streamlined **2-Button Operation**, it eliminates all potentiometer requirements while delivering a responsive, futuristic sci-fi HUD on standard SSD1306 monochrome OLEDs.
 Designed from the ground up for streamlined **4-Button or 2-Button Operation**, it eliminates all potentiometer requirements while delivering a responsive, futuristic sci-fi HUD on standard SSD1306 monochrome OLEDs.
 
 ---
@@ -102,15 +96,15 @@ The pin assignments are chosen to utilize the safest GPIO pins with built-in int
 | **Buzzer (+)** | `GPIO10` | Supports **Active (DC)** or **Passive (PWM)** buzzers! (-) connects to GND |
 | **Onboard LED** | `GPIO8` | Onboard blue LED on ESP32-C3 SuperMini |
 | **Extra External LED** | `GPIO1` | Extra status LED (flashes in sync with alerts/pings) |
-| **Button 1 (Mode / Left / Back)** | `GPIO0` | Connect to GND (Internal Pullup enabled) |
-| **Button 2 (Select / Right / Action)** | `GPIO2` | Connect to GND (Internal Pullup enabled) |
-| **Button 3 (Up / Prev / Sens+)** | `GPIO3` | Connect to GND (Internal Pullup enabled) |
-| **Button 4 (Down / Next / Sens-)** | `GPIO4` | Connect to GND (Internal Pullup enabled) |
+| **Button 1 (Mode / Back)** | `GPIO3` | Top-Left of board. Connect to GND (Internal Pullup enabled) |
+| **Button 2 (Menu / Select / Action)** | `GPIO0` | Top-Right of board. Connect to GND (Internal Pullup enabled) |
+| **Button 3 (Left / Prev / Sens+)** | `GPIO4` | Bottom-Left of board. Connect to GND (Internal Pullup enabled) |
+| **Button 4 (Right / Next / Sens-)** | `GPIO2` | Bottom-Right of board. Connect to GND (Internal Pullup enabled) |
 
 > [!NOTE]
 > **Optional External OLED on C3**:
 > - **Default (`C3_OPTIONAL_OLED 0`)**: If an optional OLED is **not added**, it automatically uses the original onboard **0.42" 72x40** OLED screen!
-> - **Optional External OLED**: If you attach an external I2C OLED to `GPIO5` (SDA) and `GPIO6` (SCL), simply set `C3_OPTIONAL_OLED` in [`config.h`](file:///c:/Users/Nifft/Documents/C3ESP/cameradetectorv2/CameraDetector/config.h):
+> - **Optional External OLED**: If you attach an external I2C OLED to `GPIO5` (SDA) and `GPIO6` (SCL), simply set `C3_OPTIONAL_OLED` in [`config.h`](CameraDetector/config.h):
 >   - `1` = Optional 0.96" 128x64 I2C OLED (SSD1306)
 >   - `2` = Optional 0.91" 128x32 I2C OLED (SSD1306)
 
@@ -150,12 +144,6 @@ The firmware natively supports **both** styles of buzzers without soldering chan
 ### 🚀 4-Button Mode (`USE_4_BUTTONS 1` - Default)
 With 4 dedicated buttons, everything is fast and 1-click (no long-presses needed):
 
-| Input Action | Radar Scope | Finder Tracker | System Menu | Spy Evader Game |
-| :--- | :--- | :--- | :--- | :--- |
-| **Button 1 (`PIN_BTN_MODE`)** | Switch to Finder | Switch to Radar | **Instant Exit / Back** | Steer Left / Exit (from menu/over) |
-| **Button 2 (`PIN_BTN_SELECT`)** | **1-Click Open Menu** | **1-Click Trust / Untrust** | **Select / Change Value** | Steer Right / Start / Replay |
-| **Button 3 (`PIN_BTN_UP`)** | Sensitivity UP (`LOW`→`PIN`) | **Previous Target** | **Scroll Menu Up** | Steer Left / Start Round |
-| **Button 4 (`PIN_BTN_DOWN`)** | Sensitivity DOWN (`PIN`→`LOW`) | **Next Target** | **Scroll Menu Down** | Steer Right / Exit Game |
 | Input Action | Radar Scope | Finder Tracker | Wi-Fi Survey Mode | System Menu | Spy Evader Game |
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | **Button 1 (`PIN_BTN_MODE`)** | Cycle to Finder | Cycle to Survey | Cycle to Radar | **Instant Exit / Back** | Steer Left / Exit (from menu/over) |
@@ -166,12 +154,6 @@ With 4 dedicated buttons, everything is fast and 1-click (no long-presses needed
 ### 🕹️ 2-Button Fallback (`USE_4_BUTTONS 0`)
 If only 2 buttons are wired:
 
-| Input Action | Radar Scope | Finder Tracker | System Menu | Spy Evader Game |
-| :--- | :--- | :--- | :--- | :--- |
-| **Button 1 (Short)** | Switch to Finder | Switch to Radar | Scroll to Next Item | Steer Left / Start |
-| **Button 1 (Long)** | Open System Menu | Open System Menu | Exit to Radar / Finder | Exit to Menu |
-| **Button 2 (Short)** | Cycle Sensitivity | Cycle Target Device | Select / Change Value | Steer Right / Start |
-| **Button 2 (Long)** | Toggle Audio Mute | Toggle Trust / Untrust | Select / Change Value | *Unused* |
 | Input Action | Radar Scope | Finder Tracker | Wi-Fi Survey Mode | System Menu | Spy Evader Game |
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | **Button 1 (Short)** | Cycle to Finder | Cycle to Survey | Cycle to Radar | Scroll to Next Item | Steer Left / Start |
@@ -201,12 +183,6 @@ Locks onto the strongest (or selected) transmitter for physical search:
 - **Doppler Guidance**: Real-time trend analysis displaying `WARMER (+)` or `colder (-)` as you move closer or farther.
 - **Geiger Sniffing**: In `PINPOINT` mode, produces rapid acoustic clicks with interval scaling down to 25ms near the target.
 
-### 3. Cyberpunk System Menu (`MENU`)
-Hold **Button 1** anywhere to enter:
-- **Indexed Card Layout**: Shows current index (`/// SYSTEM MENU /// 03/11`) and divider rule.
-- **Interactive Items**:
-  - `OPERATING MODE` → `[ RADAR ]` / `[ FINDER ]`
-
 ### 3. Wi-Fi Signal & Range Survey (`SURVEY`)
 Specialized Wi-Fi site survey and dead-zone locator mode for auditing wireless routers and access points:
 - **Sweet Spot Evaluator**: Evaluates AP signal levels with real-time placement guidance:
@@ -231,31 +207,24 @@ Hold **Button 1** anywhere (or press Button 2 in Radar mode) to enter:
   - `AUDIO VOLUME` → `[ HIGH (100%) ]` / `[ MED (70%) ]` / `[ LOW (30%) ]` / `[ MUTE (0%) ]`
   - `BUZZER TYPE` → `[ PASSIVE (PWM) ]` / `[ ACTIVE (DC) ]`
   - `SPY EVADER` → `[ LAUNCH GAME ]`
-  - `KNOWN DEVICES` → `[ BROWSE LIST ]`
-  - `TRUST ALL NOW` → `[ SNAPSHOT BASELINE ]`
-  - `CLEAR TRUST` → `[ RESET STORE ]`
   - `KNOWN DEVICES` → `[ XX DETECTED ]`
   - `TRUST ALL NOW` → `[ ADD XX ACTIVE ]`
   - `CLEAR TRUST` → `[ RESET XX SAVED ]`
   - `CALIBRATION` → `[ START WIZARD ]`
-  - `RESET DEFAULTS` → `[ RESTORE FACTORY ]`
   - `RESET DEFAULTS` → `[ RESTORE ]`
   - `EXIT MENU` → `[ RETURN >>> ]`
 
-### 4. Known Devices Manager
 ### 5. Known Devices Manager
 Browse detected devices in the local airspace:
 - Inspect MAC address, vendor/SSID label, source type (`WiFi-AP`, `WiFi-STA`, `BLE`), and RSSI.
 - Press **Button 2** to instantly toggle trust status (`[*] TRUSTED` vs `[ ] UNTRUSTED`).
 
-### 5. RSSI Calibration Wizard
 ### 6. RSSI Calibration Wizard
 Measures path-loss exponents specifically for your physical environment:
 1. **Step 1/2**: Place a known 2.4 GHz reference device (e.g., phone hotspot) exactly **1.0 meter** away and sample RSSI.
 2. **Step 2/2**: Move the device to a secondary distance (selectable: 2.0m–8.0m) and sample again.
 3. Computes and saves the environment's exact Path Loss Exponent ($N$) and reference $1\text{m}$ RSSI ($\text{ref}$) into Flash memory.
 
-### 6. "Spy Evader" Arcade Minigame
 ### 7. "Spy Evader" Arcade Minigame
 Built-in retro arcade driving game:
 - **Responsive Screen Math**: Automatically adapts lane widths to both 128x32 (S3) and 72x40 (C3) screens.
@@ -326,7 +295,6 @@ cameradetectorv2/
 ## 🔬 Technical Detection Methodology
 
 ### 1. Promiscuous 802.11 Frame Analysis
-The ESP32 Wi-Fi hardware is configured in promiscuous mode with `WIFI_PROMIS_FILTER_MASK_ALL`. The sniffer callback processes:
 The ESP32 Wi-Fi hardware is configured in promiscuous mode with `WIFI_PROMIS_FILTER_MASK_MGMT | WIFI_PROMIS_FILTER_MASK_DATA`. The sniffer callback processes:
 - **Management Frames**: Beacons, Probe Requests, Probe Responses.
 - **Data Frames**: Extracts Source Address (SA), Transmitter Address (TA), BSSID, and RSSI.
