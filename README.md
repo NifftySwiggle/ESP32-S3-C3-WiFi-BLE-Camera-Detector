@@ -104,9 +104,17 @@ The pin assignments are chosen to utilize the safest GPIO pins with built-in int
 > [!NOTE]
 > **Optional External OLED on C3**:
 > - **Default (`C3_OPTIONAL_OLED 0`)**: If an optional OLED is **not added**, it automatically uses the original onboard **0.42" 72x40** OLED screen!
-> - **Optional External OLED**: If you attach an external I2C OLED to `GPIO5` (SDA) and `GPIO6` (SCL), simply set `C3_OPTIONAL_OLED` in [`config.h`](CameraDetector/config.h):
+> - **Optional External OLED**: If you attach an external I2C OLED to `GPIO5` (SDA) and `GPIO6` (SCL), simply set `C3_OPTIONAL_OLED` in [`config.h`](Detector/config.h):
 >   - `1` = Optional 0.96" 128x64 I2C OLED (SSD1306)
 >   - `2` = Optional 0.91" 128x32 I2C OLED (SSD1306)
+
+<div align="center">
+
+#### 🔌 ESP32-C3 Circuit Wiring Diagram
+
+<img src="assets/espc3detector.png" alt="ESP32-C3 Circuit Wiring Diagram" width="550">
+
+</div>
 
 ---
 
@@ -263,7 +271,7 @@ Install the following libraries via the Arduino IDE Library Manager (**Sketch > 
 ### Flashing via Arduino IDE
 1. Open Arduino IDE 2.x.
 2. Ensure you have the **esp32** board package installed (**Tools > Board > Boards Manager** -> search `esp32` by Espressif).
-3. Open `CameraDetector/CameraDetector.ino`.
+3. Open `Detector/Detector.ino`.
 4. Select your target board:
    - For ESP32-S3: **Tools > Board > ESP32S3 Dev Module** (USB CDC On Boot: *Enabled*).
    - For ESP32-C3: **Tools > Board > ESP32C3 Dev Module** (Flash Mode: *QIO / DIO*).
@@ -276,8 +284,8 @@ Install the following libraries via the Arduino IDE Library Manager (**Sketch > 
 
 ```
 cameradetectorv2/
-├── CameraDetector/
-│   ├── CameraDetector.ino    # Main application loop, state machine & 2-button input dispatcher
+├── Detector/
+│   ├── Detector.ino          # Main application loop, state machine & button input dispatcher
 │   ├── config.h              # Pin definitions, board presets, thresholds & timing constants
 │   ├── display_ui.h          # Cyberpunk HUD renderer, radar scope, finder gauge & arcade game
 │   ├── alert_io.h            # Non-blocking audio SFX queue engine & LED flash controller
@@ -287,6 +295,8 @@ cameradetectorv2/
 │   ├── ble_scanner.h         # NimBLE advertisement observer & peripheral parser
 │   ├── buttons.h             # Debounced multi-button engine (short/long press detection)
 │   └── trusted_store.h       # Persistent allow-list storage engine using ESP32 Preferences
+├── assets/
+│   └── espc3detector.png     # ESP32-C3 circuit wiring diagram
 └── README.md                 # Project documentation
 ```
 
